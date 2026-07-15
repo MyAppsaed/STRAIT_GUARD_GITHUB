@@ -4,7 +4,7 @@ import { audio } from "./audio";
 import logoUrl from "@/assets/straitguard-logo.png";
 import { render } from "./Renderer";
 import { getHighScore, submitScore } from "./highscore";
-import { AdManager, IS_TESTING } from "@/ads/AdManager";
+import { AdManager } from "@/ads/AdManager";
 import { setHapticsEnabled } from "./haptics";
 import SplashScreen from "./SplashScreen";
 
@@ -100,7 +100,7 @@ export default function StraitGuardGame() {
   const [screen, setScreen] = useState<Screen>("menu");
   const [loading, setLoading] = useState(true);
 
-  const [lang, setLang] = useState<Lang>("en");
+  const [lang, setLang] = useState<Lang>("ar");
   const [muted, setMuted] = useState(false);
   const [isNativeApp, setIsNativeApp] = useState(false);
   const [, force] = useState(0);
@@ -278,11 +278,6 @@ export default function StraitGuardGame() {
             <button onClick={click(() => setMuted(!muted))} className="btn-ghost">
               {muted ? "🔇" : "🔊"} {t.sound}: {muted ? t.off : t.on}
             </button>
-            {isNativeApp && IS_TESTING && (
-              <button onClick={click(() => AdManager.showInterstitial())} className="btn-ghost">
-                {t.testAd}
-              </button>
-            )}
           </div>
           <div className="flex gap-2 mt-1 flex-wrap justify-center">
             <button onClick={click(() => setScreen("about"))} className="btn-ghost">{t.about}</button>
