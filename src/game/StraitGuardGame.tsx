@@ -100,7 +100,7 @@ export default function StraitGuardGame() {
   const [screen, setScreen] = useState<Screen>("menu");
   const [loading, setLoading] = useState(true);
 
-  const [lang, setLang] = useState<Lang>("en");
+  const [lang, setLang] = useState<Lang>("ar");
   const [muted, setMuted] = useState(false);
   const [isNativeApp, setIsNativeApp] = useState(false);
   const [, force] = useState(0);
