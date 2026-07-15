@@ -4,7 +4,7 @@ import { audio } from "./audio";
 import logoUrl from "@/assets/straitguard-logo.png";
 import { render } from "./Renderer";
 import { getHighScore, submitScore } from "./highscore";
-import { AdManager, IS_TESTING } from "@/ads/AdManager";
+import { AdManager } from "@/ads/AdManager";
 import { setHapticsEnabled } from "./haptics";
 import SplashScreen from "./SplashScreen";
 
