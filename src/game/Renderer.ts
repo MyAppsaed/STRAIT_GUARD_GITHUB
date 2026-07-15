@@ -211,52 +211,141 @@ function drawWake(ctx: CanvasRenderingContext2D, x: number, y: number, w: number
   ctx.fill();
 }
 
-// Top-down container cargo ship — gray hull, bow at top, rows of colored containers
+// Top-down modern container ship — dark hull with red waterline, colorful
+// container stacks amidships, and multi-level white superstructure at the stern.
+// Bow points UP (ship travels upward on the screen).
 function drawCargoShip(ctx: CanvasRenderingContext2D, cx: number, cy: number, w: number, h: number) {
   const x = cx - w / 2, y = cy - h / 2;
-  // hull (pointed bow on top, square stern on bottom — cargo moves UP)
-  ctx.fillStyle = "#7a1f1a";
+
+  // --- red underwater hull (visible as a thin "boot-top" outline around dark hull) ---
+  ctx.fillStyle = "#a8221c";
   ctx.strokeStyle = "#1a0a08";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(cx, y);                 // bow tip
-  ctx.lineTo(x + w, y + h * 0.18);
-  ctx.lineTo(x + w, y + h * 0.95);
-  ctx.quadraticCurveTo(cx, y + h, x, y + h * 0.95);
-  ctx.lineTo(x, y + h * 0.18);
+  ctx.moveTo(cx, y);                       // bow tip
+  ctx.lineTo(x + w * 0.98, y + h * 0.16);
+  ctx.lineTo(x + w * 0.98, y + h * 0.96);
+  ctx.quadraticCurveTo(cx, y + h + 2, x + w * 0.02, y + h * 0.96);
+  ctx.lineTo(x + w * 0.02, y + h * 0.16);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
-  // deck
-  ctx.fillStyle = "#d6cfb8";
-  ctx.fillRect(x + w * 0.16, y + h * 0.12, w * 0.68, h * 0.78);
+  // --- dark grey upper hull (sits inside the red hull, leaves a red rim = waterline) ---
+  const ix = x + w * 0.06, iy = y + h * 0.04;
+  const iw = w * 0.88,     ih = h * 0.9;
+  ctx.fillStyle = "#1f242b";
+  ctx.beginPath();
+  ctx.moveTo(cx, iy);
+  ctx.lineTo(ix + iw, iy + ih * 0.16);
+  ctx.lineTo(ix + iw, iy + ih * 0.94);
+  ctx.quadraticCurveTo(cx, iy + ih, ix, iy + ih * 0.94);
+  ctx.lineTo(ix, iy + ih * 0.16);
+  ctx.closePath();
+  ctx.fill();
 
-  // bow superstructure (white bridge near front)
-  ctx.fillStyle = "#f3f1ea";
-  ctx.fillRect(cx - w * 0.18, y + h * 0.08, w * 0.36, h * 0.1);
-  ctx.strokeStyle = "#444";
+  // --- deck (warm off-white cargo deck plating) ---
+  const dx = x + w * 0.16, dy = y + h * 0.14;
+  const dw = w * 0.68,     dh = h * 0.6;
+  ctx.fillStyle = "#c9b98a";
+  ctx.fillRect(dx, dy, dw, dh);
+  ctx.strokeStyle = "rgba(0,0,0,0.35)";
   ctx.lineWidth = 1;
-  ctx.strokeRect(cx - w * 0.18, y + h * 0.08, w * 0.36, h * 0.1);
+  ctx.strokeRect(dx, dy, dw, dh);
 
-  // containers grid
-  const colors = ["#c1392b", "#2c6fb8", "#e08a2a", "#3b8a4f", "#b03b6e", "#d9c24a"];
-  const cols = 4, rows = 7;
-  const gx = x + w * 0.2, gy = y + h * 0.22;
-  const cw = (w * 0.6) / cols, chh = (h * 0.62) / rows;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const idx = (r * 7 + c * 3) % colors.length;
-      ctx.fillStyle = colors[idx];
-      ctx.fillRect(gx + c * cw + 1, gy + r * chh + 1, cw - 2, chh - 2);
-      ctx.strokeStyle = "rgba(0,0,0,0.4)";
-      ctx.strokeRect(gx + c * cw + 1, gy + r * chh + 1, cw - 2, chh - 2);
+  // --- container stacks: 3 grid blocks separated by narrow deck gangways ---
+  const colors = ["#c93a2b", "#2a6fb8", "#e0892a", "#3b8a4f", "#b03b6e", "#d9c24a", "#4aa9c9"];
+  const cols = 4;
+  const blocks = 3;
+  const gap = dh * 0.04;
+  const blockH = (dh - gap * (blocks + 1)) / blocks;
+  const cw = dw / cols;
+  for (let b = 0; b < blocks; b++) {
+    const by = dy + gap + b * (blockH + gap);
+    // block shadow strip
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.fillRect(dx, by + blockH - 1, dw, 1);
+    for (let r = 0; r < 2; r++) {
+      for (let c = 0; c < cols; c++) {
+        const idx = (b * 11 + r * 5 + c * 3) % colors.length;
+        const bx = dx + c * cw + 1;
+        const rby = by + r * (blockH / 2) + 1;
+        const rw = cw - 2;
+        const rh = blockH / 2 - 2;
+        ctx.fillStyle = colors[idx];
+        ctx.fillRect(bx, rby, rw, rh);
+        // corrugated container ribs
+        ctx.strokeStyle = "rgba(0,0,0,0.28)";
+        ctx.beginPath();
+        for (let k = 1; k < 4; k++) {
+          const rx = bx + (rw * k) / 4;
+          ctx.moveTo(rx, rby + 1);
+          ctx.lineTo(rx, rby + rh - 1);
+        }
+        ctx.stroke();
+        // container outline
+        ctx.strokeStyle = "rgba(0,0,0,0.55)";
+        ctx.strokeRect(bx, rby, rw, rh);
+        // top highlight
+        ctx.fillStyle = "rgba(255,255,255,0.12)";
+        ctx.fillRect(bx, rby, rw, Math.max(1, rh * 0.18));
+      }
     }
   }
 
-  // stern mast
-  ctx.fillStyle = "#222";
-  ctx.fillRect(cx - 1, y + h * 0.86, 2, h * 0.08);
+  // --- multi-level white superstructure at STERN (bottom of sprite) ---
+  const sW = w * 0.5, sH = h * 0.16;
+  const sx = cx - sW / 2, sy = y + h * 0.76;
+  // base house
+  ctx.fillStyle = "#eef1ee";
+  ctx.strokeStyle = "#2a2f35";
+  ctx.lineWidth = 1;
+  ctx.fillRect(sx, sy, sW, sH);
+  ctx.strokeRect(sx, sy, sW, sH);
+  // upper deck (narrower)
+  const s2W = sW * 0.72, s2H = sH * 0.55;
+  const s2x = cx - s2W / 2, s2y = sy + sH * 0.18;
+  ctx.fillStyle = "#f8faf7";
+  ctx.fillRect(s2x, s2y, s2W, s2H);
+  ctx.strokeRect(s2x, s2y, s2W, s2H);
+  // bridge windows (dark strip)
+  ctx.fillStyle = "#1a2732";
+  ctx.fillRect(s2x + 2, s2y + 2, s2W - 4, Math.max(1, s2H * 0.28));
+  // window mullions
+  ctx.strokeStyle = "rgba(255,255,255,0.5)";
+  const winCount = 6;
+  for (let i = 1; i < winCount; i++) {
+    const wx = s2x + 2 + ((s2W - 4) * i) / winCount;
+    ctx.beginPath();
+    ctx.moveTo(wx, s2y + 2);
+    ctx.lineTo(wx, s2y + 2 + s2H * 0.28);
+    ctx.stroke();
+  }
+  // exhaust funnel (with red band)
+  const fW = w * 0.14, fH = sH * 0.55;
+  const fx = cx - fW / 2, fy = sy + sH * 0.4;
+  ctx.fillStyle = "#3a3f46";
+  ctx.fillRect(fx, fy, fW, fH);
+  ctx.fillStyle = "#c93a2b";
+  ctx.fillRect(fx, fy + fH * 0.35, fW, fH * 0.22);
+  ctx.strokeStyle = "#0d1115";
+  ctx.strokeRect(fx, fy, fW, fH);
+  // funnel cap
+  ctx.fillStyle = "#1a1d21";
+  ctx.fillRect(fx - 1, fy - 2, fW + 2, 2);
+
+  // stern mast/antenna
+  ctx.fillStyle = "#111";
+  ctx.fillRect(cx - 1, y + h * 0.93, 2, h * 0.06);
+
+  // subtle bow railing highlight
+  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.beginPath();
+  ctx.moveTo(cx, y + 2);
+  ctx.lineTo(cx + w * 0.42, y + h * 0.16);
+  ctx.moveTo(cx, y + 2);
+  ctx.lineTo(cx - w * 0.42, y + h * 0.16);
+  ctx.stroke();
 }
 
 // Top-down naval frigate — gray hull, pointed bow, turret + bridge
