@@ -278,11 +278,6 @@ export default function StraitGuardGame() {
             <button onClick={click(() => setMuted(!muted))} className="btn-ghost">
               {muted ? "🔇" : "🔊"} {t.sound}: {muted ? t.off : t.on}
             </button>
-            {isNativeApp && IS_TESTING && (
-              <button onClick={click(() => AdManager.showInterstitial())} className="btn-ghost">
-                {t.testAd}
-              </button>
-            )}
           </div>
           <div className="flex gap-2 mt-1 flex-wrap justify-center">
             <button onClick={click(() => setScreen("about"))} className="btn-ghost">{t.about}</button>
