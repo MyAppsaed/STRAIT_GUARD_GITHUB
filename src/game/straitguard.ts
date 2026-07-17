@@ -315,8 +315,11 @@ export class GameManager {
   powerups: Powerup[] = [];
   powerupTimer = 6;
   bombs = 0;
+  maxBombs = 3;
+  kamikazes: Kamikaze[] = [];
+  kamikazeTimer = 8;
   // Optional callback so UI can react to inventory/HP changes instantly.
-  onEvent: ((ev: "pickup-bomb" | "pickup-shield" | "bomb-used") => void) | null = null;
+  onEvent: ((ev: "pickup-bomb" | "pickup-shield" | "pickup-triple" | "bomb-used" | "kamikaze-hit") => void) | null = null;
   spawner!: EnemySpawner;
   level: 1 | 2 | 3 = 1;
   width: number;
@@ -338,16 +341,25 @@ export class GameManager {
     this.level = level;
     const settings = { ...LEVELS[level] };
     this.spawner = new EnemySpawner(settings);
+    // Apply persisted upgrades.
+    const ups = loadUpgrades();
+    const cargoHp = getValue("cargoArmor", ups);
+    const frigateSpeed = getValue("frigateSpeed", ups);
+    this.maxBombs = getValue("bombCapacity", ups);
     this.cargo = new CargoShipController({ x: this.width / 2, y: this.height - 120 });
     this.cargo.speed = settings.cargoSpeed;
+    this.cargo.hp = cargoHp;
+    this.cargo.maxHp = cargoHp;
     this.cargoStartY = this.cargo.pos.y;
-    this.player = new PlayerShipController({ x: this.width / 2, y: this.height - 220 }, settings.playerHp);
+    this.player = new PlayerShipController({ x: this.width / 2, y: this.height - 220 }, settings.playerHp, frigateSpeed);
     this.enemies = [];
     this.bullets = [];
     this.mines = [];
     this.mineTimer = level === 1 ? 6 : level === 2 ? 4 : 2.5;
     this.powerups = [];
     this.powerupTimer = 5 + Math.random() * 4;
+    this.kamikazes = [];
+    this.kamikazeTimer = level === 1 ? 14 : level === 2 ? 9 : 6;
     this.bombs = 0;
     this.travelled = 0;
     this.cameraY = 0;
@@ -384,6 +396,8 @@ export class GameManager {
       for (const e of this.enemies) e.pos.y += shift;
       for (const b of this.bullets) b.pos.y += shift;
       for (const m of this.mines) m.pos.y += shift;
+      for (const p of this.powerups) p.pos.y += shift;
+      for (const k of this.kamikazes) k.pos.y += shift;
       this.cameraY += shift;
       this.travelled += shift;
     }
@@ -394,8 +408,8 @@ export class GameManager {
       minX: sideMargin, maxX: this.width - sideMargin,
       minY: 40, maxY: this.height - 40,
     });
-    const pb = this.player.tryFire();
-    if (pb) this.bullets.push(pb);
+    const pbs = this.player.tryFire();
+    for (const pb of pbs) this.bullets.push(pb);
 
     const ne = this.spawner.update(dt, this.enemies.length, this.width, this.cargo.pos.y);
     if (ne) this.enemies.push(ne);
