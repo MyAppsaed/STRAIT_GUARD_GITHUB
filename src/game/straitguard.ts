@@ -302,6 +302,32 @@ export class Kamikaze {
   }
 }
 
+// Burning ship wreckage — decorative, drifts downward with the current.
+// Non-interactive: no collisions with any gameplay entity.
+export type WreckageVariant = "hull" | "crates" | "bow";
+export class Wreckage {
+  alive = true;
+  vy: number;
+  rot: number;
+  vr: number;
+  seed: number;
+  age = 0;
+  size: number;
+  constructor(public pos: Vec2, public variant: WreckageVariant, cargoSpeed: number) {
+    // Drift slightly faster than cargo for a parallax feel.
+    this.vy = cargoSpeed * (1.05 + Math.random() * 0.25) + 8;
+    this.rot = (Math.random() - 0.5) * 0.6;
+    this.vr = (Math.random() - 0.5) * 0.15;
+    this.seed = Math.random() * 1000;
+    this.size = 34 + Math.random() * 22;
+  }
+  update(dt: number) {
+    this.age += dt;
+    this.pos.y += this.vy * dt;
+    this.rot += this.vr * dt;
+  }
+}
+
 export type GameStatus = "menu" | "playing" | "paused" | "win" | "lose";
 
 export class GameManager {
@@ -318,6 +344,8 @@ export class GameManager {
   maxBombs = 3;
   kamikazes: Kamikaze[] = [];
   kamikazeTimer = 8;
+  wreckages: Wreckage[] = [];
+  wreckageTimer = 8;
   // Optional callback so UI can react to inventory/HP changes instantly.
   onEvent: ((ev: "pickup-bomb" | "pickup-shield" | "pickup-triple" | "bomb-used" | "kamikaze-hit") => void) | null = null;
   spawner!: EnemySpawner;
@@ -360,6 +388,8 @@ export class GameManager {
     this.powerupTimer = 5 + Math.random() * 4;
     this.kamikazes = [];
     this.kamikazeTimer = level === 1 ? 14 : level === 2 ? 9 : 6;
+    this.wreckages = [];
+    this.wreckageTimer = 4 + Math.random() * 6;
     this.bombs = 0;
     this.travelled = 0;
     this.cameraY = 0;
@@ -398,9 +428,27 @@ export class GameManager {
       for (const m of this.mines) m.pos.y += shift;
       for (const p of this.powerups) p.pos.y += shift;
       for (const k of this.kamikazes) k.pos.y += shift;
+      for (const w of this.wreckages) w.pos.y += shift;
       this.cameraY += shift;
       this.travelled += shift;
     }
+
+    // --- Wreckage spawner (decorative, non-interactive) ---
+    this.wreckageTimer -= dt;
+    if (this.wreckageTimer <= 0) {
+      this.wreckageTimer = 15 + Math.random() * 15;
+      const laneMin = 130, laneMax = this.width - 130;
+      if (laneMax > laneMin) {
+        const wx = laneMin + Math.random() * (laneMax - laneMin);
+        const variants: WreckageVariant[] = ["hull", "crates", "bow"];
+        const v = variants[Math.floor(Math.random() * variants.length)];
+        this.wreckages.push(new Wreckage({ x: wx, y: -60 }, v, settings.cargoSpeed));
+      }
+    }
+    for (const w of this.wreckages) w.update(dt);
+    this.wreckages = this.wreckages.filter((w) => w.alive && w.pos.y < this.height + 120);
+
+
 
 
     const sideMargin = Math.max(28, Math.min(60, this.width * 0.08));
