@@ -333,49 +333,50 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   drawFrigate(ctx, g.player.pos.x, g.player.pos.y, g.player.size.x, g.player.size.y, playerMeta.muzzle);
   drawHpBar(ctx, g.player.pos.x, g.player.pos.y - g.player.size.y / 2 - 12, 60, g.player.hp / g.player.maxHp, "FRIGATE");
 
-  // ---------- BULLETS: trails + tracer style + muzzle flash on birth ----------
+  // ---------- BULLETS: per-weapon tracer + muzzle flash on birth ----------
   const aliveBullets = new WeakSet<Bullet>();
   for (const b of g.bullets) {
     aliveBullets.add(b);
+    const fx = WEAPON_FX[b.weapon] ?? WEAPON_FX.cannon;
     const bm = getBulletMeta(b);
     if (!seenBullets.has(b)) {
       seenBullets.add(b);
-      // enemy muzzle flash at spawn
       if (b.from === "enemy") {
         const dir = Math.atan2(b.vel.y, b.vel.x);
-        emitMuzzle(b.pos.x, b.pos.y, dir, "#ffd870");
+        emitMuzzle(b.pos.x, b.pos.y, dir, fx.muzzle);
       }
     }
     bm.trail.push({ x: b.pos.x, y: b.pos.y, a: 1 });
-    if (bm.trail.length > 8) bm.trail.shift();
+    if (bm.trail.length > fx.trailLen) bm.trail.shift();
 
-    // draw tracer trail
+    // trail
     for (let i = 0; i < bm.trail.length; i++) {
       const t = bm.trail[i];
-      const alpha = (i / bm.trail.length) * 0.7;
+      const alpha = (i / bm.trail.length) * 0.75;
       ctx.beginPath();
-      ctx.fillStyle = b.from === "player"
-        ? `rgba(180,255,210,${alpha})`
-        : `rgba(255,190,90,${alpha})`;
+      ctx.fillStyle = `rgba(${fx.trail},${alpha})`;
       ctx.arc(t.x, t.y, b.radius * (0.4 + i / bm.trail.length * 0.6), 0, Math.PI * 2);
       ctx.fill();
     }
-    // bullet head with glow
+    // head glow
     ctx.save();
-    ctx.shadowColor = b.from === "player" ? "#7df2b0" : "#ffae3a";
-    ctx.shadowBlur = 10;
-    ctx.fillStyle = b.from === "player" ? "#e8fff0" : "#ffe89a";
+    ctx.shadowColor = fx.glow;
+    ctx.shadowBlur = b.weapon === "shell" ? 16 : b.weapon === "plasma" ? 14 : 10;
+    ctx.fillStyle = fx.head;
     ctx.beginPath();
     ctx.arc(b.pos.x, b.pos.y, b.radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
 
-  // ---------- Detect killed enemies (explosion) ----------
-  // Iterate WeakSet is not possible; instead re-check via meta map on next frame.
-  // We compare by scanning seen list is impossible. Use a shadow array:
+  // ---------- MINES ----------
+  drawMines(ctx, g.mines);
+  detectMineDeaths(g);
+
+  // ---------- Detect killed enemies/bullets (explosions, impacts) ----------
   detectEnemyDeaths(g, aliveEnemies);
   detectBulletDeaths(g, aliveBullets);
+
 
   // ---------- PARTICLES ----------
   updateParticles(_dt);
