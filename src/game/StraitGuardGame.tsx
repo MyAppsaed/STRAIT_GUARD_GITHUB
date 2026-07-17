@@ -172,7 +172,10 @@ export default function StraitGuardGame() {
         render(ctx, g);
         if (g.status === "win" || g.status === "lose") {
           const res = submitScore(g.level, g.score);
-          setEndResult({ score: g.score, best: res.best, isNew: res.isNew, kills: g.kills });
+          const state = creditScore(g.score);
+          setUpgrades(state);
+          const earned = Math.max(0, Math.floor(g.score / 10));
+          setEndResult({ score: g.score, best: res.best, isNew: res.isNew, kills: g.kills, earned });
           setScreen(g.status);
           AdManager.hideBanner();
           AdManager.showInterstitial();
