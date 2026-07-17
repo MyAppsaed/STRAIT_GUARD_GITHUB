@@ -428,9 +428,27 @@ export class GameManager {
       for (const m of this.mines) m.pos.y += shift;
       for (const p of this.powerups) p.pos.y += shift;
       for (const k of this.kamikazes) k.pos.y += shift;
+      for (const w of this.wreckages) w.pos.y += shift;
       this.cameraY += shift;
       this.travelled += shift;
     }
+
+    // --- Wreckage spawner (decorative, non-interactive) ---
+    this.wreckageTimer -= dt;
+    if (this.wreckageTimer <= 0) {
+      this.wreckageTimer = 15 + Math.random() * 15;
+      const laneMin = 130, laneMax = this.width - 130;
+      if (laneMax > laneMin) {
+        const wx = laneMin + Math.random() * (laneMax - laneMin);
+        const variants: WreckageVariant[] = ["hull", "crates", "bow"];
+        const v = variants[Math.floor(Math.random() * variants.length)];
+        this.wreckages.push(new Wreckage({ x: wx, y: -60 }, v, settings.cargoSpeed));
+      }
+    }
+    for (const w of this.wreckages) w.update(dt);
+    this.wreckages = this.wreckages.filter((w) => w.alive && w.pos.y < this.height + 120);
+
+
 
 
     const sideMargin = Math.max(28, Math.min(60, this.width * 0.08));
