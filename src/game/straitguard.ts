@@ -109,7 +109,7 @@ export class PlayerShipController extends Ship {
     if (this.fireCooldown > 0) return null;
     this.fireCooldown = this.fireRate;
     audio.play("fire");
-    return new Bullet({ x: this.pos.x, y: this.pos.y - this.size.y / 2 }, { x: 0, y: -560 }, 10, "player");
+    return new Bullet({ x: this.pos.x, y: this.pos.y - this.size.y / 2 }, { x: 0, y: -560 }, 10, "player", 4, "cannon");
   }
 }
 
