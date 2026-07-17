@@ -425,6 +425,40 @@ export class GameManager {
     }
     this.mines = this.mines.filter((m) => m.alive && m.pos.y < this.height + 80);
 
+    // --- Powerup spawn (low probability, from top of screen) ---
+    this.powerupTimer -= dt;
+    if (this.powerupTimer <= 0) {
+      const base = this.level === 1 ? 12 : this.level === 2 ? 14 : 16;
+      this.powerupTimer = base + Math.random() * base * 0.7;
+      const laneMin = 140, laneMax = this.width - 140;
+      if (laneMax > laneMin) {
+        const px = laneMin + Math.random() * (laneMax - laneMin);
+        // Bombs rarer than shields.
+        const kind: PowerupKind = Math.random() < 0.4 ? "bomb" : "shield";
+        this.powerups.push(new Powerup(kind, { x: px, y: -30 }));
+      }
+    }
+    for (const p of this.powerups) {
+      p.update(dt);
+      if (!p.alive) continue;
+      if (p.hitsShip(this.player) || p.hitsShip(this.cargo)) {
+        p.alive = false;
+        audio.play("win");
+        Haptics.pulse("light");
+        if (p.kind === "bomb") {
+          this.bombs += 1;
+          this.onEvent?.("pickup-bomb");
+        } else {
+          // Heal player: +40 HP, allow modest overheal above starting maxHp.
+          const cap = Math.max(this.player.maxHp, this.player.hp + 40);
+          this.player.hp = Math.min(cap, this.player.hp + 40);
+          if (cap > this.player.maxHp) this.player.maxHp = cap;
+          this.onEvent?.("pickup-shield");
+        }
+      }
+    }
+    this.powerups = this.powerups.filter((p) => p.alive && p.pos.y < this.height + 40);
+
     this.bullets = this.bullets.filter((b) => b.alive);
     this.enemies = this.enemies.filter((e) => e.alive && e.pos.y < this.height + 80);
 
