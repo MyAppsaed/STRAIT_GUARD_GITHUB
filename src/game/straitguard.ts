@@ -314,9 +314,38 @@ export class GameManager {
       if (eb) this.bullets.push(eb);
     }
 
+    // Spawn sea mines periodically ahead of the cargo, within the water lane.
+    this.mineTimer -= dt;
+    if (this.mineTimer <= 0) {
+      const base = this.level === 1 ? 5.5 : this.level === 2 ? 3.5 : 2.2;
+      this.mineTimer = base + Math.random() * base * 0.6;
+      const laneMin = 130, laneMax = this.width - 130;
+      if (laneMax > laneMin) {
+        const mx = laneMin + Math.random() * (laneMax - laneMin);
+        const my = this.cargo.pos.y - 260 - Math.random() * 340;
+        this.mines.push(new Mine({ x: mx, y: my }));
+      }
+    }
+
     for (const b of this.bullets) {
       b.update(dt);
       if (b.from === "player") {
+        // Player bullets can destroy mines.
+        let consumed = false;
+        for (const m of this.mines) {
+          if (m.alive && m.hitsBullet(b)) {
+            m.damage(b.damage); b.alive = false; consumed = true;
+            if (!m.alive) {
+              audio.play("explosion");
+              this.score += 75;
+              Haptics.pulse("light");
+            } else {
+              audio.play("hit");
+            }
+            break;
+          }
+        }
+        if (consumed) continue;
         for (const e of this.enemies) {
           if (e.alive && e.hits(b)) {
             e.damage(b.damage); b.alive = false;
@@ -348,6 +377,20 @@ export class GameManager {
         b.alive = false;
       }
     }
+
+    // Ship-vs-mine contact damage.
+    for (const m of this.mines) {
+      if (!m.alive) continue;
+      if (m.hitsShip(this.cargo)) {
+        this.cargo.damage(40); m.alive = false;
+        audio.play("explosion"); Haptics.pulse("hit");
+      } else if (m.hitsShip(this.player)) {
+        this.player.damage(30); m.alive = false;
+        audio.play("explosion"); Haptics.pulse("hit");
+      }
+    }
+    this.mines = this.mines.filter((m) => m.alive && m.pos.y < this.height + 80);
+
     this.bullets = this.bullets.filter((b) => b.alive);
     this.enemies = this.enemies.filter((e) => e.alive && e.pos.y < this.height + 80);
 
