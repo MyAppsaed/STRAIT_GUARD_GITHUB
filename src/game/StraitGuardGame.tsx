@@ -7,11 +7,12 @@ import { getHighScore, submitScore } from "./highscore";
 import { AdManager } from "@/ads/AdManager";
 import { setHapticsEnabled } from "./haptics";
 import SplashScreen from "./SplashScreen";
+import { creditScore, loadUpgrades, nextCost, purchase, UPGRADES, UpgradeKey, UpgradeState } from "./upgrades";
 
 
 
 
-type Screen = "menu" | "levels" | "play" | "pause" | "win" | "lose" | "privacy" | "contact" | "about";
+type Screen = "menu" | "levels" | "play" | "pause" | "win" | "lose" | "privacy" | "contact" | "about" | "shop";
 type Lang = "en" | "ar";
 
 const APP_VERSION = "1.0.0";
@@ -39,6 +40,10 @@ const I18N: Record<Lang, Record<string, string>> = {
     allCleared: "ALL LEVELS CLEARED · LEGENDARY COMMANDER",
     privacy: "PRIVACY POLICY", contact: "CONTACT US", about: "ABOUT GAME",
     testAd: "TEST AD",
+    shop: "UPGRADES", points: "POINTS", buy: "UPGRADE", maxed: "MAX", cost: "COST",
+    tier: "TIER", earned: "+{n} POINTS EARNED",
+    upgFrigateSpeed: "FRIGATE SPEED", upgCargoArmor: "CARGO ARMOR", upgBombCapacity: "MEGA-BOMB CAPACITY",
+    tripleActive: "TRIPLE SHOT",
     privacyBody: [
       "STRAIT-GUARD is a fully offline single-player game. It does not require registration or a user account, and does not directly collect any personal information from you.",
       "The game displays advertisements provided by Google AdMob. To serve ads, Google may collect limited advertising data (such as device identifier, approximate location, and app usage) in accordance with Google's own Privacy Policy.",
@@ -75,6 +80,10 @@ const I18N: Record<Lang, Record<string, string>> = {
     allCleared: "تم إنهاء جميع المستويات · قائد أسطوري",
     privacy: "سياسة الخصوصية", contact: "اتصل بنا", about: "عن اللعبة",
     testAd: "اختبار الإعلان",
+    shop: "الترقيات", points: "النقاط", buy: "ترقية", maxed: "أقصى", cost: "التكلفة",
+    tier: "المستوى", earned: "+{n} نقطة مكتسبة",
+    upgFrigateSpeed: "سرعة الفرقاطة", upgCargoArmor: "درع الشحنة", upgBombCapacity: "سعة القنابل",
+    tripleActive: "طلقة ثلاثية",
     privacyBody: [
       "لعبة حارس المضيق تعمل بالكامل دون اتصال بالإنترنت وبلاعب واحد. لا تتطلب اللعبة تسجيل حساب ولا تجمع أي معلومات شخصية منك بشكل مباشر.",
       "تعرض اللعبة إعلانات مقدَّمة من Google AdMob. لعرض هذه الإعلانات قد تجمع Google بيانات إعلانية محدودة (مثل معرّف الجهاز والموقع التقريبي واستخدام التطبيق) وفقاً لسياسة الخصوصية الخاصة بها.",
@@ -106,7 +115,8 @@ export default function StraitGuardGame() {
   const [muted, setMuted] = useState(false);
   const [isNativeApp, setIsNativeApp] = useState(false);
   const [, force] = useState(0);
-  const [endResult, setEndResult] = useState<{ score: number; best: number; isNew: boolean; kills: number } | null>(null);
+  const [endResult, setEndResult] = useState<{ score: number; best: number; isNew: boolean; kills: number; earned: number } | null>(null);
+  const [upgrades, setUpgrades] = useState<UpgradeState>(() => loadUpgrades());
   const t = I18N[lang];
 
   const highScores = useMemo(() => ({
@@ -162,7 +172,10 @@ export default function StraitGuardGame() {
         render(ctx, g);
         if (g.status === "win" || g.status === "lose") {
           const res = submitScore(g.level, g.score);
-          setEndResult({ score: g.score, best: res.best, isNew: res.isNew, kills: g.kills });
+          const state = creditScore(g.score);
+          setUpgrades(state);
+          const earned = Math.max(0, Math.floor(g.score / 10));
+          setEndResult({ score: g.score, best: res.best, isNew: res.isNew, kills: g.kills, earned });
           setScreen(g.status);
           AdManager.hideBanner();
           AdManager.showInterstitial();
@@ -270,8 +283,13 @@ export default function StraitGuardGame() {
       )}
 
       {screen === "play" && g && (
-        <div className="absolute bottom-4 z-20 pointer-events-none"
+        <div className="absolute bottom-4 z-20 pointer-events-none flex flex-col items-end gap-2"
           style={{ [dir === "rtl" ? "left" : "right"]: "1rem" } as React.CSSProperties}>
+          {g.player.tripleTimer > 0 && (
+            <div className="sg-panel px-2 py-1 text-[10px] tracking-[0.2em] font-mono text-emerald-200">
+              🔫 {t.tripleActive} · {g.player.tripleTimer.toFixed(1)}s
+            </div>
+          )}
           <button
             type="button"
             aria-label={t.useBomb}
@@ -280,7 +298,7 @@ export default function StraitGuardGame() {
             className="pointer-events-auto btn-bomb"
           >
             <span className="btn-bomb-icon">💣</span>
-            <span className="btn-bomb-count">{g.bombs}</span>
+            <span className="btn-bomb-count">{g.bombs}/{g.maxBombs}</span>
             <span className="btn-bomb-label">{t.useBomb}</span>
           </button>
         </div>
@@ -299,6 +317,7 @@ export default function StraitGuardGame() {
             </button>
           </div>
           <div className="flex gap-2 mt-1 flex-wrap justify-center">
+            <button onClick={click(() => setScreen("shop"))} className="btn-ghost">🛠 {t.shop} · {upgrades.points}★</button>
             <button onClick={click(() => setScreen("about"))} className="btn-ghost">{t.about}</button>
             <button onClick={click(() => setScreen("privacy"))} className="btn-ghost">{t.privacy}</button>
             <button onClick={click(() => setScreen("contact"))} className="btn-ghost">{t.contact}</button>
@@ -370,6 +389,51 @@ export default function StraitGuardGame() {
           <button onClick={click(toMenu)} className="btn-ghost">{t.back}</button>
         </Overlay>
       )}
+
+      {screen === "shop" && (
+        <Overlay>
+          <SgTitle accent="cyan">{t.shop}</SgTitle>
+          <div className="sg-panel px-4 py-2 text-amber-200 tracking-[0.25em] text-sm font-mono">
+            ★ {t.points}: {upgrades.points}
+          </div>
+          <div className="flex flex-col gap-2 w-[min(92vw,420px)]">
+            {(Object.keys(UPGRADES) as UpgradeKey[]).map((k) => {
+              const def = UPGRADES[k];
+              const tier = upgrades.tiers[k];
+              const cost = nextCost(k, upgrades);
+              const label = k === "frigateSpeed" ? t.upgFrigateSpeed : k === "cargoArmor" ? t.upgCargoArmor : t.upgBombCapacity;
+              const cur = def.values[tier];
+              const nxt = tier < def.maxTier ? def.values[tier + 1] : null;
+              const canBuy = cost !== null && upgrades.points >= cost;
+              return (
+                <div key={k} className="sg-panel px-3 py-2 flex flex-col gap-1" dir="ltr">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-cyan-100 text-xs tracking-[0.2em] font-bold">{label}</span>
+                    <span className="text-cyan-200/70 text-[10px] tracking-[0.2em]">{t.tier} {tier}/{def.maxTier}</span>
+                  </div>
+                  <div className="flex justify-between items-baseline text-[11px] font-mono">
+                    <span className="text-cyan-50">{cur}{nxt !== null ? ` → ${nxt}` : ""}</span>
+                    <span className="text-amber-200">{cost === null ? t.maxed : `${t.cost} ${cost}★`}</span>
+                  </div>
+                  <button
+                    onClick={click(() => {
+                      const r = purchase(k);
+                      if (r.ok) { setUpgrades(r.state); audio.play("win"); }
+                    })}
+                    disabled={!canBuy}
+                    className="btn-primary !py-2 !text-xs mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {cost === null ? t.maxed : t.buy}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          <button onClick={click(toMenu)} className="btn-ghost">{t.back}</button>
+        </Overlay>
+      )}
+
+
 
 
 
@@ -501,7 +565,7 @@ function Overlay({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ScorePanel({ t, result }: { t: Record<string, string>; result: { score: number; best: number; isNew: boolean; kills: number } }) {
+function ScorePanel({ t, result }: { t: Record<string, string>; result: { score: number; best: number; isNew: boolean; kills: number; earned: number } }) {
   return (
     <div className="sg-panel px-5 py-3 flex flex-col items-center gap-1 min-w-[240px]" dir="ltr">
       <div className="flex items-baseline gap-3">
@@ -514,6 +578,11 @@ function ScorePanel({ t, result }: { t: Record<string, string>; result: { score:
         <span className="text-[9px] tracking-[0.25em] text-cyan-200/60 font-bold">· {t.kills}</span>
         <span className="text-sm font-mono text-cyan-100">{result.kills}</span>
       </div>
+      {result.earned > 0 && (
+        <div className="mt-1 text-[10px] tracking-[0.25em] font-bold text-emerald-300 font-mono">
+          ★ {t.earned.replace("{n}", String(result.earned))} ★
+        </div>
+      )}
       {result.isNew && (
         <div className="mt-1 text-[10px] tracking-[0.3em] font-black text-amber-300 animate-pulse">★ {t.newBest} ★</div>
       )}

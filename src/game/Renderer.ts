@@ -1,4 +1,4 @@
-import type { GameManager, EnemyController, Bullet, Mine, WeaponKind, Powerup } from "./straitguard";
+import type { GameManager, EnemyController, Bullet, Mine, WeaponKind, Powerup, Kamikaze } from "./straitguard";
 
 // ---- Per-weapon VFX palette ----
 // Behavior unchanged; visuals only. Each weapon defines muzzle/tracer/head/glow/impact.
@@ -331,6 +331,25 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   playerMeta.lastFireCd = g.player.fireCooldown;
   playerMeta.muzzle = Math.max(0, playerMeta.muzzle - _dt);
   drawFrigate(ctx, g.player.pos.x, g.player.pos.y, g.player.size.x, g.player.size.y, playerMeta.muzzle);
+  // Triple-shot power-up countdown ring around the frigate.
+  if (g.player.tripleTimer > 0 && g.player.tripleDuration > 0) {
+    const frac = Math.max(0, Math.min(1, g.player.tripleTimer / g.player.tripleDuration));
+    const rad = Math.max(g.player.size.x, g.player.size.y) * 0.75;
+    ctx.save();
+    ctx.strokeStyle = "rgba(20,30,40,0.55)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(g.player.pos.x, g.player.pos.y, rad, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = "#7df2b0";
+    ctx.shadowColor = "#7df2b0";
+    ctx.shadowBlur = 10;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(g.player.pos.x, g.player.pos.y, rad, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
   drawHpBar(ctx, g.player.pos.x, g.player.pos.y - g.player.size.y / 2 - 12, 60, g.player.hp / g.player.maxHp, "FRIGATE");
 
   // ---------- BULLETS: per-weapon tracer + muzzle flash on birth ----------
@@ -376,6 +395,10 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   // ---------- POWERUPS ----------
   drawPowerups(ctx, g.powerups);
 
+  // ---------- KAMIKAZE boats ----------
+  drawKamikazes(ctx, g.kamikazes);
+  detectKamikazeDeaths(g);
+
   // ---------- Detect killed enemies/bullets (explosions, impacts) ----------
   detectEnemyDeaths(g, aliveEnemies);
   detectBulletDeaths(g, aliveBullets);
@@ -415,8 +438,9 @@ function drawPowerups(ctx: CanvasRenderingContext2D, powerups: Powerup[]) {
     const cx = p.pos.x, cy = p.pos.y + bob;
     const r = p.radius;
     const isBomb = p.kind === "bomb";
-    const accent = isBomb ? "#ffb84a" : "#ff5a7a";
-    const glow = isBomb ? "rgba(255,180,60,0.55)" : "rgba(255,90,130,0.55)";
+    const isTriple = p.kind === "triple";
+    const accent = isBomb ? "#ffb84a" : isTriple ? "#7df2b0" : "#ff5a7a";
+    const glow = isBomb ? "rgba(255,180,60,0.55)" : isTriple ? "rgba(120,255,180,0.55)" : "rgba(255,90,130,0.55)";
 
     // Outer glow halo
     ctx.save();
@@ -469,6 +493,28 @@ function drawPowerups(ctx: CanvasRenderingContext2D, powerups: Powerup[]) {
       ctx.beginPath();
       ctx.arc(r * 0.78, -r * 0.58, 2.4, 0, Math.PI * 2);
       ctx.fill();
+    } else if (isTriple) {
+      // Triple-shot icon: three upward tracers.
+      ctx.strokeStyle = "#eafff2";
+      ctx.shadowColor = "#7df2b0";
+      ctx.shadowBlur = 8;
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = "round";
+      const len = r * 0.85;
+      const spread = 12 * Math.PI / 180;
+      for (const ang of [-spread, 0, spread]) {
+        ctx.beginPath();
+        ctx.moveTo(Math.sin(ang) * len * 0.15, len * 0.55);
+        ctx.lineTo(Math.sin(ang) * len, -len * 0.6);
+        ctx.stroke();
+      }
+      // bullet heads
+      ctx.fillStyle = "#eafff2";
+      for (const ang of [-spread, 0, spread]) {
+        ctx.beginPath();
+        ctx.arc(Math.sin(ang) * len, -len * 0.6, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
     } else {
       // heart icon
       ctx.fillStyle = "#ff3a5a";
@@ -1356,4 +1402,90 @@ function drawHpBar(ctx: CanvasRenderingContext2D, cx: number, y: number, w: numb
     ctx.textBaseline = "bottom";
     ctx.fillText(label, cx, y - 2);
   }
+}
+
+// ============================================================================
+// Kamikaze suicide boats — small, fast, aggressive silhouette with red warning
+// stripe and warning-light blink. Trails a hot wake.
+// ============================================================================
+const seenKamikazes = new WeakSet<Kamikaze>();
+let _prevKamikazes: Kamikaze[] = [];
+
+function drawKamikazes(ctx: CanvasRenderingContext2D, boats: Kamikaze[]) {
+  for (const k of boats) {
+    if (!seenKamikazes.has(k)) seenKamikazes.add(k);
+    // hot wake behind
+    ctx.save();
+    ctx.translate(k.pos.x, k.pos.y);
+    ctx.rotate(k.angle + Math.PI / 2); // ship points along velocity
+    const w = k.size.x, h = k.size.y;
+
+    // wake plume
+    ctx.fillStyle = "rgba(255,180,90,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(0, h * 0.75, w * 0.5, h * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // hull (dark red)
+    ctx.fillStyle = "#3a0f10";
+    ctx.beginPath();
+    ctx.moveTo(0, -h / 2);
+    ctx.lineTo(w / 2, h / 2);
+    ctx.lineTo(-w / 2, h / 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // red warning stripe
+    ctx.fillStyle = "#c8181c";
+    ctx.fillRect(-w / 2 + 2, -h * 0.05, w - 4, h * 0.18);
+
+    // yellow/black hazard chevrons on top
+    ctx.fillStyle = "#f1c40f";
+    ctx.fillRect(-w * 0.3, -h * 0.32, w * 0.6, h * 0.1);
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-w * 0.3, -h * 0.32, w * 0.6, h * 0.1);
+
+    // explosive payload dome
+    ctx.fillStyle = "#8a1a1a";
+    ctx.beginPath();
+    ctx.arc(0, h * 0.05, w * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#ffdada";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // blinking warning light on the bow
+    const blink = (Math.sin(_t * 12 + k.wobble) + 1) * 0.5;
+    ctx.fillStyle = `rgba(255,${60 + 120 * blink},60,${0.7 + 0.3 * blink})`;
+    ctx.shadowColor = "#ff5040";
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(0, -h * 0.42, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // HP bar (only if damaged)
+    if (k.hp < k.maxHp) {
+      drawHpBar(ctx, k.pos.x, k.pos.y - k.size.y / 2 - 8, k.size.x + 10, k.hp / k.maxHp);
+    }
+  }
+}
+
+function detectKamikazeDeaths(g: GameManager) {
+  const now = new Set(g.kamikazes);
+  for (const k of _prevKamikazes) {
+    if (!now.has(k) && !k.alive) {
+      // larger, distinct explosion (multi-ring + shards)
+      emitExplosion(k.pos.x, k.pos.y, 1.3);
+      // extra red shockring
+      particles.push({
+        x: k.pos.x, y: k.pos.y, vx: 0, vy: 0,
+        life: 0.4, maxLife: 0.4, size: 6,
+        color: "rgba(255,80,40,0.9)", kind: "ring",
+      });
+    }
+  }
+  _prevKamikazes = g.kamikazes.slice();
 }

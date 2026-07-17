@@ -1,6 +1,7 @@
 // StraitGuard - modular game logic, structured for easy Unity port.
 import { audio } from "./audio";
 import { Haptics } from "./haptics";
+import { getValue, loadUpgrades } from "./upgrades";
 
 
 export type Vec2 = { x: number; y: number };
@@ -86,8 +87,11 @@ export class PlayerShipController extends Ship {
   fireRate = 0.18;
   target: Vec2 | null = null;
   speed = 380;
-  constructor(pos: Vec2, hp = 100) {
+  tripleTimer = 0; // seconds remaining of triple-shot
+  tripleDuration = 10; // for HUD ratio display
+  constructor(pos: Vec2, hp = 100, speed = 380) {
     super(pos, { x: 34, y: 46 }, hp);
+    this.speed = speed;
   }
   setTarget(p: Vec2 | null) { this.target = p; }
   update(dt: number, bounds: { minX: number; maxX: number; minY: number; maxY: number }) {
@@ -104,12 +108,28 @@ export class PlayerShipController extends Ship {
     this.pos.x = Math.max(bounds.minX, Math.min(bounds.maxX, this.pos.x));
     this.pos.y = Math.max(bounds.minY, Math.min(bounds.maxY, this.pos.y));
     this.fireCooldown = Math.max(0, this.fireCooldown - dt);
+    this.tripleTimer = Math.max(0, this.tripleTimer - dt);
   }
-  tryFire(): Bullet | null {
-    if (this.fireCooldown > 0) return null;
+  activateTriple(seconds = 10) {
+    this.tripleDuration = seconds;
+    this.tripleTimer = seconds;
+  }
+  tryFire(): Bullet[] {
+    if (this.fireCooldown > 0) return [];
     this.fireCooldown = this.fireRate;
     audio.play("fire");
-    return new Bullet({ x: this.pos.x, y: this.pos.y - this.size.y / 2 }, { x: 0, y: -560 }, 10, "player", 4, "cannon");
+    const originY = this.pos.y - this.size.y / 2;
+    if (this.tripleTimer > 0) {
+      // Spread cone: straight + ±14° left/right.
+      const speed = 560;
+      const ang = 14 * Math.PI / 180;
+      return [
+        new Bullet({ x: this.pos.x, y: originY }, { x: 0, y: -speed }, 10, "player", 4, "cannon"),
+        new Bullet({ x: this.pos.x, y: originY }, { x: -Math.sin(ang) * speed, y: -Math.cos(ang) * speed }, 9, "player", 4, "cannon"),
+        new Bullet({ x: this.pos.x, y: originY }, { x:  Math.sin(ang) * speed, y: -Math.cos(ang) * speed }, 9, "player", 4, "cannon"),
+      ];
+    }
+    return [new Bullet({ x: this.pos.x, y: originY }, { x: 0, y: -560 }, 10, "player", 4, "cannon")];
   }
 }
 
@@ -215,7 +235,7 @@ export class EnemySpawner {
   }
 }
 
-export type PowerupKind = "bomb" | "shield";
+export type PowerupKind = "bomb" | "shield" | "triple";
 
 export class Powerup {
   alive = true;
@@ -241,6 +261,47 @@ export class Powerup {
   }
 }
 
+// Kamikaze suicide boat: fast small craft that homes on cargo and detonates on contact.
+export class Kamikaze {
+  alive = true;
+  hp = 15;
+  maxHp = 15;
+  size = { x: 22, y: 28 };
+  speed = 190;
+  angle = 0;
+  wobble: number;
+  constructor(public pos: Vec2) {
+    this.wobble = Math.random() * Math.PI * 2;
+  }
+  update(dt: number, target: Vec2) {
+    const dx = target.x - this.pos.x;
+    const dy = target.y - this.pos.y;
+    const d = Math.hypot(dx, dy) || 1;
+    // slight wobble for menace
+    this.wobble += dt * 6;
+    const wob = Math.sin(this.wobble) * 0.4;
+    const nx = dx / d, ny = dy / d;
+    // perpendicular wobble
+    const px = -ny * wob, py = nx * wob;
+    this.pos.x += (nx + px) * this.speed * dt;
+    this.pos.y += (ny + py) * this.speed * dt;
+    this.angle = Math.atan2(ny + py, nx + px);
+  }
+  damage(d: number) { this.hp = Math.max(0, this.hp - d); if (this.hp <= 0) this.alive = false; }
+  hitsBullet(b: Bullet) {
+    return (
+      Math.abs(b.pos.x - this.pos.x) < this.size.x / 2 + b.radius &&
+      Math.abs(b.pos.y - this.pos.y) < this.size.y / 2 + b.radius
+    );
+  }
+  hitsShip(s: Ship) {
+    return (
+      Math.abs(s.pos.x - this.pos.x) < s.size.x / 2 + this.size.x / 2 &&
+      Math.abs(s.pos.y - this.pos.y) < s.size.y / 2 + this.size.y / 2
+    );
+  }
+}
+
 export type GameStatus = "menu" | "playing" | "paused" | "win" | "lose";
 
 export class GameManager {
@@ -254,8 +315,11 @@ export class GameManager {
   powerups: Powerup[] = [];
   powerupTimer = 6;
   bombs = 0;
+  maxBombs = 3;
+  kamikazes: Kamikaze[] = [];
+  kamikazeTimer = 8;
   // Optional callback so UI can react to inventory/HP changes instantly.
-  onEvent: ((ev: "pickup-bomb" | "pickup-shield" | "bomb-used") => void) | null = null;
+  onEvent: ((ev: "pickup-bomb" | "pickup-shield" | "pickup-triple" | "bomb-used" | "kamikaze-hit") => void) | null = null;
   spawner!: EnemySpawner;
   level: 1 | 2 | 3 = 1;
   width: number;
@@ -277,16 +341,25 @@ export class GameManager {
     this.level = level;
     const settings = { ...LEVELS[level] };
     this.spawner = new EnemySpawner(settings);
+    // Apply persisted upgrades.
+    const ups = loadUpgrades();
+    const cargoHp = getValue("cargoArmor", ups);
+    const frigateSpeed = getValue("frigateSpeed", ups);
+    this.maxBombs = getValue("bombCapacity", ups);
     this.cargo = new CargoShipController({ x: this.width / 2, y: this.height - 120 });
     this.cargo.speed = settings.cargoSpeed;
+    this.cargo.hp = cargoHp;
+    this.cargo.maxHp = cargoHp;
     this.cargoStartY = this.cargo.pos.y;
-    this.player = new PlayerShipController({ x: this.width / 2, y: this.height - 220 }, settings.playerHp);
+    this.player = new PlayerShipController({ x: this.width / 2, y: this.height - 220 }, settings.playerHp, frigateSpeed);
     this.enemies = [];
     this.bullets = [];
     this.mines = [];
     this.mineTimer = level === 1 ? 6 : level === 2 ? 4 : 2.5;
     this.powerups = [];
     this.powerupTimer = 5 + Math.random() * 4;
+    this.kamikazes = [];
+    this.kamikazeTimer = level === 1 ? 14 : level === 2 ? 9 : 6;
     this.bombs = 0;
     this.travelled = 0;
     this.cameraY = 0;
@@ -323,6 +396,8 @@ export class GameManager {
       for (const e of this.enemies) e.pos.y += shift;
       for (const b of this.bullets) b.pos.y += shift;
       for (const m of this.mines) m.pos.y += shift;
+      for (const p of this.powerups) p.pos.y += shift;
+      for (const k of this.kamikazes) k.pos.y += shift;
       this.cameraY += shift;
       this.travelled += shift;
     }
@@ -333,8 +408,8 @@ export class GameManager {
       minX: sideMargin, maxX: this.width - sideMargin,
       minY: 40, maxY: this.height - 40,
     });
-    const pb = this.player.tryFire();
-    if (pb) this.bullets.push(pb);
+    const pbs = this.player.tryFire();
+    for (const pb of pbs) this.bullets.push(pb);
 
     const ne = this.spawner.update(dt, this.enemies.length, this.width, this.cargo.pos.y);
     if (ne) this.enemies.push(ne);
@@ -375,6 +450,23 @@ export class GameManager {
               Haptics.pulse("light");
             } else {
               audio.play("hit");
+            }
+            break;
+          }
+        }
+        if (consumed) continue;
+        // Player bullets can destroy kamikaze boats.
+        for (const k of this.kamikazes) {
+          if (k.alive && k.hitsBullet(b)) {
+            k.damage(b.damage); b.alive = false; consumed = true;
+            if (!k.alive) {
+              audio.play("explosion");
+              this.score += 120;
+              this.kills += 1;
+              Haptics.pulse("light");
+            } else {
+              audio.play("hit");
+              this.score += 3;
             }
             break;
           }
@@ -425,6 +517,31 @@ export class GameManager {
     }
     this.mines = this.mines.filter((m) => m.alive && m.pos.y < this.height + 80);
 
+    // --- Kamikaze boats ---
+    this.kamikazeTimer -= dt;
+    if (this.kamikazeTimer <= 0) {
+      const base = this.level === 1 ? 16 : this.level === 2 ? 10 : 6.5;
+      this.kamikazeTimer = base + Math.random() * base * 0.5;
+      // Spawn from top-left or top-right corner region.
+      const side = Math.random() < 0.5 ? "L" : "R";
+      const kx = side === "L" ? 130 + Math.random() * 40 : this.width - 130 - Math.random() * 40;
+      const ky = -30 - Math.random() * 40;
+      this.kamikazes.push(new Kamikaze({ x: kx, y: ky }));
+    }
+    for (const k of this.kamikazes) {
+      if (!k.alive) continue;
+      k.update(dt, this.cargo.pos);
+      if (k.hitsShip(this.cargo)) {
+        this.cargo.damage(60); k.alive = false;
+        audio.play("explosion"); Haptics.pulse("gameover");
+        this.onEvent?.("kamikaze-hit");
+      } else if (k.hitsShip(this.player)) {
+        this.player.damage(40); k.alive = false;
+        audio.play("explosion"); Haptics.pulse("hit");
+      }
+    }
+    this.kamikazes = this.kamikazes.filter((k) => k.alive && k.pos.y < this.height + 80);
+
     // --- Powerup spawn (low probability, from top of screen) ---
     this.powerupTimer -= dt;
     if (this.powerupTimer <= 0) {
@@ -433,8 +550,9 @@ export class GameManager {
       const laneMin = 140, laneMax = this.width - 140;
       if (laneMax > laneMin) {
         const px = laneMin + Math.random() * (laneMax - laneMin);
-        // Bombs rarer than shields.
-        const kind: PowerupKind = Math.random() < 0.4 ? "bomb" : "shield";
+        // Weighted: 45% shield, 30% triple-shot, 25% bomb.
+        const r = Math.random();
+        const kind: PowerupKind = r < 0.45 ? "shield" : r < 0.75 ? "triple" : "bomb";
         this.powerups.push(new Powerup(kind, { x: px, y: -30 }));
       }
     }
@@ -446,8 +564,11 @@ export class GameManager {
         audio.play("win");
         Haptics.pulse("light");
         if (p.kind === "bomb") {
-          this.bombs += 1;
+          this.bombs = Math.min(this.maxBombs, this.bombs + 1);
           this.onEvent?.("pickup-bomb");
+        } else if (p.kind === "triple") {
+          this.player.activateTriple(10);
+          this.onEvent?.("pickup-triple");
         } else {
           // Heal player: +40 HP, allow modest overheal above starting maxHp.
           const cap = Math.max(this.player.maxHp, this.player.hp + 40);
