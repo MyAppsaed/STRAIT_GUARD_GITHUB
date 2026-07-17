@@ -1403,3 +1403,89 @@ function drawHpBar(ctx: CanvasRenderingContext2D, cx: number, y: number, w: numb
     ctx.fillText(label, cx, y - 2);
   }
 }
+
+// ============================================================================
+// Kamikaze suicide boats — small, fast, aggressive silhouette with red warning
+// stripe and warning-light blink. Trails a hot wake.
+// ============================================================================
+const seenKamikazes = new WeakSet<Kamikaze>();
+let _prevKamikazes: Kamikaze[] = [];
+
+function drawKamikazes(ctx: CanvasRenderingContext2D, boats: Kamikaze[]) {
+  for (const k of boats) {
+    if (!seenKamikazes.has(k)) seenKamikazes.add(k);
+    // hot wake behind
+    ctx.save();
+    ctx.translate(k.pos.x, k.pos.y);
+    ctx.rotate(k.angle + Math.PI / 2); // ship points along velocity
+    const w = k.size.x, h = k.size.y;
+
+    // wake plume
+    ctx.fillStyle = "rgba(255,180,90,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(0, h * 0.75, w * 0.5, h * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // hull (dark red)
+    ctx.fillStyle = "#3a0f10";
+    ctx.beginPath();
+    ctx.moveTo(0, -h / 2);
+    ctx.lineTo(w / 2, h / 2);
+    ctx.lineTo(-w / 2, h / 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // red warning stripe
+    ctx.fillStyle = "#c8181c";
+    ctx.fillRect(-w / 2 + 2, -h * 0.05, w - 4, h * 0.18);
+
+    // yellow/black hazard chevrons on top
+    ctx.fillStyle = "#f1c40f";
+    ctx.fillRect(-w * 0.3, -h * 0.32, w * 0.6, h * 0.1);
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-w * 0.3, -h * 0.32, w * 0.6, h * 0.1);
+
+    // explosive payload dome
+    ctx.fillStyle = "#8a1a1a";
+    ctx.beginPath();
+    ctx.arc(0, h * 0.05, w * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#ffdada";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // blinking warning light on the bow
+    const blink = (Math.sin(_t * 12 + k.wobble) + 1) * 0.5;
+    ctx.fillStyle = `rgba(255,${60 + 120 * blink},60,${0.7 + 0.3 * blink})`;
+    ctx.shadowColor = "#ff5040";
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(0, -h * 0.42, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // HP bar (only if damaged)
+    if (k.hp < k.maxHp) {
+      drawHpBar(ctx, k.pos.x, k.pos.y - k.size.y / 2 - 8, k.size.x + 10, k.hp / k.maxHp);
+    }
+  }
+}
+
+function detectKamikazeDeaths(g: GameManager) {
+  const now = new Set(g.kamikazes);
+  for (const k of _prevKamikazes) {
+    if (!now.has(k) && !k.alive) {
+      // larger, distinct explosion (multi-ring + shards)
+      emitExplosion(k.pos.x, k.pos.y, 1.3);
+      // extra red shockring
+      particles.push({
+        x: k.pos.x, y: k.pos.y, vx: 0, vy: 0,
+        life: 0.4, maxLife: 0.4, size: 6,
+        color: "rgba(255,80,40,0.9)", kind: "ring",
+      });
+    }
+  }
+  _prevKamikazes = g.kamikazes.slice();
+}
