@@ -560,7 +560,7 @@ function Overlay({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ScorePanel({ t, result }: { t: Record<string, string>; result: { score: number; best: number; isNew: boolean; kills: number } }) {
+function ScorePanel({ t, result }: { t: Record<string, string>; result: { score: number; best: number; isNew: boolean; kills: number; earned: number } }) {
   return (
     <div className="sg-panel px-5 py-3 flex flex-col items-center gap-1 min-w-[240px]" dir="ltr">
       <div className="flex items-baseline gap-3">
@@ -573,6 +573,11 @@ function ScorePanel({ t, result }: { t: Record<string, string>; result: { score:
         <span className="text-[9px] tracking-[0.25em] text-cyan-200/60 font-bold">· {t.kills}</span>
         <span className="text-sm font-mono text-cyan-100">{result.kills}</span>
       </div>
+      {result.earned > 0 && (
+        <div className="mt-1 text-[10px] tracking-[0.25em] font-bold text-emerald-300 font-mono">
+          ★ {t.earned.replace("{n}", String(result.earned))} ★
+        </div>
+      )}
       {result.isNew && (
         <div className="mt-1 text-[10px] tracking-[0.3em] font-black text-amber-300 animate-pulse">★ {t.newBest} ★</div>
       )}
