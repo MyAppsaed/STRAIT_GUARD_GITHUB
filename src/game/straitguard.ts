@@ -13,6 +13,8 @@ export interface GameConfig {
 
 export type EnemyKind = "basic" | "fast" | "heavy";
 
+export type WeaponKind = "cannon" | "mg" | "plasma" | "shell";
+
 export class Bullet {
   alive = true;
   constructor(
@@ -21,12 +23,36 @@ export class Bullet {
     public damage: number,
     public from: "player" | "enemy",
     public radius = 4,
+    public weapon: WeaponKind = "cannon",
   ) {}
   update(dt: number) {
     this.pos.x += this.vel.x * dt;
     this.pos.y += this.vel.y * dt;
   }
 }
+
+// Sea landmine — floating naval mine. Damages ships on contact; destructible by player fire.
+export class Mine {
+  alive = true;
+  hp = 20;
+  radius = 16;
+  bob: number;
+  constructor(public pos: Vec2) {
+    this.bob = Math.random() * Math.PI * 2;
+  }
+  hitsBullet(b: Bullet) {
+    const dx = b.pos.x - this.pos.x, dy = b.pos.y - this.pos.y;
+    return dx * dx + dy * dy < (this.radius + b.radius) * (this.radius + b.radius);
+  }
+  hitsShip(s: Ship) {
+    return (
+      Math.abs(s.pos.x - this.pos.x) < s.size.x / 2 + this.radius * 0.7 &&
+      Math.abs(s.pos.y - this.pos.y) < s.size.y / 2 + this.radius * 0.7
+    );
+  }
+  damage(d: number) { this.hp = Math.max(0, this.hp - d); if (this.hp <= 0) this.alive = false; }
+}
+
 
 export class Ship {
   hp: number;
@@ -83,7 +109,7 @@ export class PlayerShipController extends Ship {
     if (this.fireCooldown > 0) return null;
     this.fireCooldown = this.fireRate;
     audio.play("fire");
-    return new Bullet({ x: this.pos.x, y: this.pos.y - this.size.y / 2 }, { x: 0, y: -560 }, 10, "player");
+    return new Bullet({ x: this.pos.x, y: this.pos.y - this.size.y / 2 }, { x: 0, y: -560 }, 10, "player", 4, "cannon");
   }
 }
 
@@ -129,15 +155,20 @@ export class EnemyController extends Ship {
     this.fireCooldown -= dt;
     if (this.fireCooldown <= 0) {
       this.fireCooldown = this.fireRate;
-      const sp = 240;
+      const sp = this.kind === "fast" ? 320 : this.kind === "heavy" ? 200 : 240;
+      const weapon: WeaponKind = this.kind === "fast" ? "plasma" : this.kind === "heavy" ? "shell" : "mg";
+      const radius = this.kind === "heavy" ? 6 : this.kind === "fast" ? 3 : 4;
       return new Bullet(
         { x: this.pos.x, y: this.pos.y },
         { x: (dx / d) * sp, y: (dy / d) * sp },
         this.bulletDamage,
         "enemy",
+        radius,
+        weapon,
       );
     }
     return null;
+
   }
 }
 
@@ -192,6 +223,8 @@ export class GameManager {
   cargo!: CargoShipController;
   enemies: EnemyController[] = [];
   bullets: Bullet[] = [];
+  mines: Mine[] = [];
+  mineTimer = 3;
   spawner!: EnemySpawner;
   level: 1 | 2 | 3 = 1;
   width: number;
@@ -219,12 +252,15 @@ export class GameManager {
     this.player = new PlayerShipController({ x: this.width / 2, y: this.height - 220 }, settings.playerHp);
     this.enemies = [];
     this.bullets = [];
+    this.mines = [];
+    this.mineTimer = level === 1 ? 6 : level === 2 ? 4 : 2.5;
     this.travelled = 0;
     this.cameraY = 0;
     this.score = 0;
     this.kills = 0;
     this.status = "playing";
   }
+
 
 
   resize(w: number, h: number) {
@@ -252,9 +288,11 @@ export class GameManager {
       this.player.pos.y += shift;
       for (const e of this.enemies) e.pos.y += shift;
       for (const b of this.bullets) b.pos.y += shift;
+      for (const m of this.mines) m.pos.y += shift;
       this.cameraY += shift;
       this.travelled += shift;
     }
+
 
     const sideMargin = Math.max(28, Math.min(60, this.width * 0.08));
     this.player.update(dt, {
@@ -276,9 +314,38 @@ export class GameManager {
       if (eb) this.bullets.push(eb);
     }
 
+    // Spawn sea mines periodically ahead of the cargo, within the water lane.
+    this.mineTimer -= dt;
+    if (this.mineTimer <= 0) {
+      const base = this.level === 1 ? 5.5 : this.level === 2 ? 3.5 : 2.2;
+      this.mineTimer = base + Math.random() * base * 0.6;
+      const laneMin = 130, laneMax = this.width - 130;
+      if (laneMax > laneMin) {
+        const mx = laneMin + Math.random() * (laneMax - laneMin);
+        const my = this.cargo.pos.y - 260 - Math.random() * 340;
+        this.mines.push(new Mine({ x: mx, y: my }));
+      }
+    }
+
     for (const b of this.bullets) {
       b.update(dt);
       if (b.from === "player") {
+        // Player bullets can destroy mines.
+        let consumed = false;
+        for (const m of this.mines) {
+          if (m.alive && m.hitsBullet(b)) {
+            m.damage(b.damage); b.alive = false; consumed = true;
+            if (!m.alive) {
+              audio.play("explosion");
+              this.score += 75;
+              Haptics.pulse("light");
+            } else {
+              audio.play("hit");
+            }
+            break;
+          }
+        }
+        if (consumed) continue;
         for (const e of this.enemies) {
           if (e.alive && e.hits(b)) {
             e.damage(b.damage); b.alive = false;
@@ -310,6 +377,20 @@ export class GameManager {
         b.alive = false;
       }
     }
+
+    // Ship-vs-mine contact damage.
+    for (const m of this.mines) {
+      if (!m.alive) continue;
+      if (m.hitsShip(this.cargo)) {
+        this.cargo.damage(40); m.alive = false;
+        audio.play("explosion"); Haptics.pulse("hit");
+      } else if (m.hitsShip(this.player)) {
+        this.player.damage(30); m.alive = false;
+        audio.play("explosion"); Haptics.pulse("hit");
+      }
+    }
+    this.mines = this.mines.filter((m) => m.alive && m.pos.y < this.height + 80);
+
     this.bullets = this.bullets.filter((b) => b.alive);
     this.enemies = this.enemies.filter((e) => e.alive && e.pos.y < this.height + 80);
 
