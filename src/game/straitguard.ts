@@ -155,15 +155,20 @@ export class EnemyController extends Ship {
     this.fireCooldown -= dt;
     if (this.fireCooldown <= 0) {
       this.fireCooldown = this.fireRate;
-      const sp = 240;
+      const sp = this.kind === "fast" ? 320 : this.kind === "heavy" ? 200 : 240;
+      const weapon: WeaponKind = this.kind === "fast" ? "plasma" : this.kind === "heavy" ? "shell" : "mg";
+      const radius = this.kind === "heavy" ? 6 : this.kind === "fast" ? 3 : 4;
       return new Bullet(
         { x: this.pos.x, y: this.pos.y },
         { x: (dx / d) * sp, y: (dy / d) * sp },
         this.bulletDamage,
         "enemy",
+        radius,
+        weapon,
       );
     }
     return null;
+
   }
 }
 
