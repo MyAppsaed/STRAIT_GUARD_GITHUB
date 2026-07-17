@@ -395,6 +395,10 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   // ---------- POWERUPS ----------
   drawPowerups(ctx, g.powerups);
 
+  // ---------- KAMIKAZE boats ----------
+  drawKamikazes(ctx, g.kamikazes);
+  detectKamikazeDeaths(g);
+
   // ---------- Detect killed enemies/bullets (explosions, impacts) ----------
   detectEnemyDeaths(g, aliveEnemies);
   detectBulletDeaths(g, aliveBullets);
