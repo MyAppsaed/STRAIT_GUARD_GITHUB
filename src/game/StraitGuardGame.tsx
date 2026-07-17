@@ -7,11 +7,12 @@ import { getHighScore, submitScore } from "./highscore";
 import { AdManager } from "@/ads/AdManager";
 import { setHapticsEnabled } from "./haptics";
 import SplashScreen from "./SplashScreen";
+import { creditScore, loadUpgrades, nextCost, purchase, UPGRADES, UpgradeKey, UpgradeState } from "./upgrades";
 
 
 
 
-type Screen = "menu" | "levels" | "play" | "pause" | "win" | "lose" | "privacy" | "contact" | "about";
+type Screen = "menu" | "levels" | "play" | "pause" | "win" | "lose" | "privacy" | "contact" | "about" | "shop";
 type Lang = "en" | "ar";
 
 const APP_VERSION = "1.0.0";
