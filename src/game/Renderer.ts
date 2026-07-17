@@ -331,6 +331,25 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   playerMeta.lastFireCd = g.player.fireCooldown;
   playerMeta.muzzle = Math.max(0, playerMeta.muzzle - _dt);
   drawFrigate(ctx, g.player.pos.x, g.player.pos.y, g.player.size.x, g.player.size.y, playerMeta.muzzle);
+  // Triple-shot power-up countdown ring around the frigate.
+  if (g.player.tripleTimer > 0 && g.player.tripleDuration > 0) {
+    const frac = Math.max(0, Math.min(1, g.player.tripleTimer / g.player.tripleDuration));
+    const rad = Math.max(g.player.size.x, g.player.size.y) * 0.75;
+    ctx.save();
+    ctx.strokeStyle = "rgba(20,30,40,0.55)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(g.player.pos.x, g.player.pos.y, rad, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = "#7df2b0";
+    ctx.shadowColor = "#7df2b0";
+    ctx.shadowBlur = 10;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(g.player.pos.x, g.player.pos.y, rad, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
   drawHpBar(ctx, g.player.pos.x, g.player.pos.y - g.player.size.y / 2 - 12, 60, g.player.hp / g.player.maxHp, "FRIGATE");
 
   // ---------- BULLETS: per-weapon tracer + muzzle flash on birth ----------
