@@ -1,4 +1,19 @@
-import type { GameManager, EnemyController, Bullet } from "./straitguard";
+import type { GameManager, EnemyController, Bullet, Mine, WeaponKind } from "./straitguard";
+
+// ---- Per-weapon VFX palette ----
+// Behavior unchanged; visuals only. Each weapon defines muzzle/tracer/head/glow/impact.
+type WeaponFx = {
+  head: string; glow: string; trail: string; // trail is an rgb triplet "r,g,b"
+  muzzle: string; trailLen: number;
+  impact: "spark" | "splash" | "shell" | "plasma";
+};
+const WEAPON_FX: Record<WeaponKind, WeaponFx> = {
+  cannon:  { head: "#e8fff0", glow: "#7df2b0", trail: "180,255,210", muzzle: "#c9ffe0", trailLen: 8,  impact: "splash" },
+  mg:      { head: "#ffe89a", glow: "#ffae3a", trail: "255,200,120", muzzle: "#ffd870", trailLen: 6,  impact: "spark"  },
+  plasma:  { head: "#f5a8ff", glow: "#c33aff", trail: "230,150,255", muzzle: "#f0a0ff", trailLen: 10, impact: "plasma" },
+  shell:   { head: "#ffd0a0", glow: "#ff5a1a", trail: "255,140,80",  muzzle: "#ffb060", trailLen: 12, impact: "shell"  },
+};
+
 
 // ============================================================================
 // STRAITGUARD — Renderer (visual overhaul).
