@@ -373,6 +373,9 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   drawMines(ctx, g.mines);
   detectMineDeaths(g);
 
+  // ---------- POWERUPS ----------
+  drawPowerups(ctx, g.powerups);
+
   // ---------- Detect killed enemies/bullets (explosions, impacts) ----------
   detectEnemyDeaths(g, aliveEnemies);
   detectBulletDeaths(g, aliveBullets);
@@ -381,6 +384,105 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   // ---------- PARTICLES ----------
   updateParticles(_dt);
   drawParticles(ctx);
+
+  // ---------- MEGA-BOMB screen-clear flash ----------
+  if (g.megaBombFlash > 0) {
+    const a = Math.min(1, g.megaBombFlash / 0.9);
+    // White radial flash + expanding shockwave
+    const rad = (1 - a) * Math.max(W, H) * 1.1;
+    ctx.save();
+    ctx.globalAlpha = a * 0.85;
+    const rg = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H));
+    rg.addColorStop(0, "rgba(255,240,180,0.95)");
+    rg.addColorStop(0.4, "rgba(255,160,60,0.55)");
+    rg.addColorStop(1, "rgba(255,60,20,0)");
+    ctx.fillStyle = rg;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = a;
+    ctx.strokeStyle = "rgba(255,230,140,0.9)";
+    ctx.lineWidth = 6 * a;
+    ctx.beginPath();
+    ctx.arc(W / 2, H / 2, rad, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    g.megaBombFlash = Math.max(0, g.megaBombFlash - _dt);
+  }
+}
+
+function drawPowerups(ctx: CanvasRenderingContext2D, powerups: Powerup[]) {
+  for (const p of powerups) {
+    const bob = Math.sin(_t * 3 + p.bob) * 3;
+    const cx = p.pos.x, cy = p.pos.y + bob;
+    const r = p.radius;
+    const isBomb = p.kind === "bomb";
+    const accent = isBomb ? "#ffb84a" : "#ff5a7a";
+    const glow = isBomb ? "rgba(255,180,60,0.55)" : "rgba(255,90,130,0.55)";
+
+    // Outer glow halo
+    ctx.save();
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 18;
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + 2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // Bubble body (translucent)
+    const bg = ctx.createRadialGradient(cx - r * 0.4, cy - r * 0.4, 2, cx, cy, r);
+    bg.addColorStop(0, "rgba(220,245,255,0.85)");
+    bg.addColorStop(0.6, "rgba(120,190,230,0.35)");
+    bg.addColorStop(1, glow);
+    ctx.fillStyle = bg;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bubble highlight
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.beginPath();
+    ctx.ellipse(cx - r * 0.35, cy - r * 0.45, r * 0.28, r * 0.16, -0.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Icon
+    ctx.save();
+    ctx.translate(cx, cy);
+    if (isBomb) {
+      // bomb body
+      ctx.fillStyle = "#101418";
+      ctx.beginPath();
+      ctx.arc(0, 2, r * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+      // fuse
+      ctx.strokeStyle = "#6a4a20";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(r * 0.35, -r * 0.35);
+      ctx.quadraticCurveTo(r * 0.6, -r * 0.7, r * 0.75, -r * 0.55);
+      ctx.stroke();
+      // spark
+      const sp = (Math.sin(_t * 20) + 1) * 0.5;
+      ctx.fillStyle = `rgba(255,${180 + 60 * sp},60,${0.7 + 0.3 * sp})`;
+      ctx.shadowColor = "#ffb84a";
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(r * 0.78, -r * 0.58, 2.4, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // heart icon
+      ctx.fillStyle = "#ff3a5a";
+      ctx.shadowColor = "#ff6b8a";
+      ctx.shadowBlur = 6;
+      const s = r * 0.55;
+      ctx.beginPath();
+      ctx.moveTo(0, s * 0.6);
+      ctx.bezierCurveTo(s * 1.2, -s * 0.2, s * 0.6, -s * 1.1, 0, -s * 0.35);
+      ctx.bezierCurveTo(-s * 0.6, -s * 1.1, -s * 1.2, -s * 0.2, 0, s * 0.6);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
 }
 
 // Track previous enemy list to detect deaths.
