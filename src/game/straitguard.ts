@@ -344,6 +344,8 @@ export class GameManager {
   maxBombs = 3;
   kamikazes: Kamikaze[] = [];
   kamikazeTimer = 8;
+  wreckages: Wreckage[] = [];
+  wreckageTimer = 8;
   // Optional callback so UI can react to inventory/HP changes instantly.
   onEvent: ((ev: "pickup-bomb" | "pickup-shield" | "pickup-triple" | "bomb-used" | "kamikaze-hit") => void) | null = null;
   spawner!: EnemySpawner;
