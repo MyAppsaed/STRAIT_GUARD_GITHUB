@@ -115,7 +115,8 @@ export default function StraitGuardGame() {
   const [muted, setMuted] = useState(false);
   const [isNativeApp, setIsNativeApp] = useState(false);
   const [, force] = useState(0);
-  const [endResult, setEndResult] = useState<{ score: number; best: number; isNew: boolean; kills: number } | null>(null);
+  const [endResult, setEndResult] = useState<{ score: number; best: number; isNew: boolean; kills: number; earned: number } | null>(null);
+  const [upgrades, setUpgrades] = useState<UpgradeState>(() => loadUpgrades());
   const t = I18N[lang];
 
   const highScores = useMemo(() => ({
