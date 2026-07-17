@@ -302,6 +302,32 @@ export class Kamikaze {
   }
 }
 
+// Burning ship wreckage — decorative, drifts downward with the current.
+// Non-interactive: no collisions with any gameplay entity.
+export type WreckageVariant = "hull" | "crates" | "bow";
+export class Wreckage {
+  alive = true;
+  vy: number;
+  rot: number;
+  vr: number;
+  seed: number;
+  age = 0;
+  size: number;
+  constructor(public pos: Vec2, public variant: WreckageVariant, cargoSpeed: number) {
+    // Drift slightly faster than cargo for a parallax feel.
+    this.vy = cargoSpeed * (1.05 + Math.random() * 0.25) + 8;
+    this.rot = (Math.random() - 0.5) * 0.6;
+    this.vr = (Math.random() - 0.5) * 0.15;
+    this.seed = Math.random() * 1000;
+    this.size = 34 + Math.random() * 22;
+  }
+  update(dt: number) {
+    this.age += dt;
+    this.pos.y += this.vy * dt;
+    this.rot += this.vr * dt;
+  }
+}
+
 export type GameStatus = "menu" | "playing" | "paused" | "win" | "lose";
 
 export class GameManager {
