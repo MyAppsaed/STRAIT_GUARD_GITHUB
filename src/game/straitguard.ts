@@ -13,6 +13,8 @@ export interface GameConfig {
 
 export type EnemyKind = "basic" | "fast" | "heavy";
 
+export type WeaponKind = "cannon" | "mg" | "plasma" | "shell";
+
 export class Bullet {
   alive = true;
   constructor(
@@ -21,12 +23,36 @@ export class Bullet {
     public damage: number,
     public from: "player" | "enemy",
     public radius = 4,
+    public weapon: WeaponKind = "cannon",
   ) {}
   update(dt: number) {
     this.pos.x += this.vel.x * dt;
     this.pos.y += this.vel.y * dt;
   }
 }
+
+// Sea landmine — floating naval mine. Damages ships on contact; destructible by player fire.
+export class Mine {
+  alive = true;
+  hp = 20;
+  radius = 16;
+  bob: number;
+  constructor(public pos: Vec2) {
+    this.bob = Math.random() * Math.PI * 2;
+  }
+  hitsBullet(b: Bullet) {
+    const dx = b.pos.x - this.pos.x, dy = b.pos.y - this.pos.y;
+    return dx * dx + dy * dy < (this.radius + b.radius) * (this.radius + b.radius);
+  }
+  hitsShip(s: Ship) {
+    return (
+      Math.abs(s.pos.x - this.pos.x) < s.size.x / 2 + this.radius * 0.7 &&
+      Math.abs(s.pos.y - this.pos.y) < s.size.y / 2 + this.radius * 0.7
+    );
+  }
+  damage(d: number) { this.hp = Math.max(0, this.hp - d); if (this.hp <= 0) this.alive = false; }
+}
+
 
 export class Ship {
   hp: number;
