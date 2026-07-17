@@ -283,8 +283,13 @@ export default function StraitGuardGame() {
       )}
 
       {screen === "play" && g && (
-        <div className="absolute bottom-4 z-20 pointer-events-none"
+        <div className="absolute bottom-4 z-20 pointer-events-none flex flex-col items-end gap-2"
           style={{ [dir === "rtl" ? "left" : "right"]: "1rem" } as React.CSSProperties}>
+          {g.player.tripleTimer > 0 && (
+            <div className="sg-panel px-2 py-1 text-[10px] tracking-[0.2em] font-mono text-emerald-200">
+              🔫 {t.tripleActive} · {g.player.tripleTimer.toFixed(1)}s
+            </div>
+          )}
           <button
             type="button"
             aria-label={t.useBomb}
@@ -293,7 +298,7 @@ export default function StraitGuardGame() {
             className="pointer-events-auto btn-bomb"
           >
             <span className="btn-bomb-icon">💣</span>
-            <span className="btn-bomb-count">{g.bombs}</span>
+            <span className="btn-bomb-count">{g.bombs}/{g.maxBombs}</span>
             <span className="btn-bomb-label">{t.useBomb}</span>
           </button>
         </div>
