@@ -1,4 +1,4 @@
-import type { GameManager, EnemyController, Bullet, Mine, WeaponKind, Powerup, Kamikaze } from "./straitguard";
+import type { GameManager, EnemyController, Bullet, Mine, WeaponKind, Powerup, Kamikaze, Wreckage } from "./straitguard";
 
 // ---- Per-weapon VFX palette ----
 // Behavior unchanged; visuals only. Each weapon defines muzzle/tracer/head/glow/impact.
