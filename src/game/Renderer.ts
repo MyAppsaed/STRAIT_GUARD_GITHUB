@@ -401,26 +401,143 @@ function detectEnemyDeaths(g: GameManager, alive: WeakSet<EnemyController>) {
 let _prevBullets: Bullet[] = [];
 function detectBulletDeaths(g: GameManager, alive: WeakSet<Bullet>) {
   for (const b of _prevBullets) {
-    if (!alive.has(b)) {
-      // Splash for player bullets that die in water (miss).
-      if (b.from === "player") {
-        emitSplash(b.pos.x, b.pos.y);
-      } else {
-        // small impact spark for enemy shots
-        for (let i = 0; i < 4; i++) {
-          const a = Math.random() * Math.PI * 2;
-          particles.push({
-            x: b.pos.x, y: b.pos.y,
-            vx: Math.cos(a) * 60, vy: Math.sin(a) * 60,
-            life: 0.25, maxLife: 0.25,
-            size: 1.5, color: "#ffb060", kind: "spark",
-          });
-        }
+    if (alive.has(b)) continue;
+    const fx = WEAPON_FX[b.weapon] ?? WEAPON_FX.cannon;
+    if (fx.impact === "splash") {
+      emitSplash(b.pos.x, b.pos.y);
+    } else if (fx.impact === "shell") {
+      // small HE burst
+      emitExplosion(b.pos.x, b.pos.y, 0.35);
+    } else if (fx.impact === "plasma") {
+      // magenta ring + bright flash
+      particles.push({
+        x: b.pos.x, y: b.pos.y, vx: 0, vy: 0,
+        life: 0.25, maxLife: 0.25, size: 4,
+        color: "rgba(230,150,255,0.9)", kind: "ring",
+      });
+      particles.push({
+        x: b.pos.x, y: b.pos.y, vx: 0, vy: 0,
+        life: 0.12, maxLife: 0.12, size: 8,
+        color: fx.head, kind: "flash",
+      });
+    } else {
+      for (let i = 0; i < 5; i++) {
+        const a = Math.random() * Math.PI * 2;
+        particles.push({
+          x: b.pos.x, y: b.pos.y,
+          vx: Math.cos(a) * 70, vy: Math.sin(a) * 70,
+          life: 0.25, maxLife: 0.25,
+          size: 1.5, color: fx.glow, kind: "spark",
+        });
       }
     }
   }
   _prevBullets = g.bullets.slice();
 }
+
+// ============================================================================
+// Sea mines — floating spiked mines with chain, blinking pilot light.
+// ============================================================================
+const seenMines = new WeakSet<Mine>();
+let _prevMines: Mine[] = [];
+
+function drawMines(ctx: CanvasRenderingContext2D, mines: Mine[]) {
+  for (const m of mines) {
+    if (!seenMines.has(m)) seenMines.add(m);
+    const bob = Math.sin(_t * 2 + m.bob) * 2;
+    const cx = m.pos.x, cy = m.pos.y + bob;
+    const r = m.radius;
+
+    // subtle water ring under mine
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.strokeStyle = "rgba(180,220,240,0.6)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + r * 0.75, r * 1.05, r * 0.28, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // spikes
+    ctx.fillStyle = "#1a1a1a";
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const sx = cx + Math.cos(a) * r;
+      const sy = cy + Math.sin(a) * r;
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(a);
+      ctx.beginPath();
+      ctx.moveTo(0, -2);
+      ctx.lineTo(6, 0);
+      ctx.lineTo(0, 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // body
+    const grd = ctx.createRadialGradient(cx - r * 0.4, cy - r * 0.4, 2, cx, cy, r);
+    grd.addColorStop(0, "#5a5a62");
+    grd.addColorStop(1, "#1a1c22");
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // equator band
+    ctx.strokeStyle = "rgba(0,0,0,0.6)";
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, r * 0.9, r * 0.22, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // rivets
+    ctx.fillStyle = "#8a8f96";
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + 0.3;
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(a) * r * 0.6, cy + Math.sin(a) * r * 0.6, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // blinking red pilot light
+    const blink = (Math.sin(_t * 6 + m.bob) + 1) * 0.5;
+    ctx.save();
+    ctx.shadowColor = "#ff2a2a";
+    ctx.shadowBlur = 8 * blink;
+    ctx.fillStyle = `rgba(255,${60 + 60 * blink},${60 * blink},${0.6 + 0.4 * blink})`;
+    ctx.beginPath();
+    ctx.arc(cx, cy - r * 0.35, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // damage cracks when hp low
+    const dmg = 1 - m.hp / 20;
+    if (dmg > 0.3) {
+      ctx.strokeStyle = `rgba(255,120,60,${dmg})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx - r * 0.5, cy - r * 0.2);
+      ctx.lineTo(cx + r * 0.2, cy + r * 0.1);
+      ctx.lineTo(cx + r * 0.6, cy - r * 0.3);
+      ctx.stroke();
+    }
+  }
+}
+
+function detectMineDeaths(g: GameManager) {
+  const alive = new Set(g.mines);
+  for (const m of _prevMines) {
+    if (!alive.has(m) && m.hp <= 0) {
+      emitExplosion(m.pos.x, m.pos.y, 1.2);
+    }
+  }
+  _prevMines = g.mines.slice();
+}
+
 
 // ============================================================================
 // Scenery (unchanged behavior, richer palette)
