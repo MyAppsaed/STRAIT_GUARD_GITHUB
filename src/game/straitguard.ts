@@ -285,6 +285,9 @@ export class GameManager {
     this.bullets = [];
     this.mines = [];
     this.mineTimer = level === 1 ? 6 : level === 2 ? 4 : 2.5;
+    this.powerups = [];
+    this.powerupTimer = 5 + Math.random() * 4;
+    this.bombs = 0;
     this.travelled = 0;
     this.cameraY = 0;
     this.score = 0;
