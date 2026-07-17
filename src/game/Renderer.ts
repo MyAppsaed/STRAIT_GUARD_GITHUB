@@ -415,8 +415,9 @@ function drawPowerups(ctx: CanvasRenderingContext2D, powerups: Powerup[]) {
     const cx = p.pos.x, cy = p.pos.y + bob;
     const r = p.radius;
     const isBomb = p.kind === "bomb";
-    const accent = isBomb ? "#ffb84a" : "#ff5a7a";
-    const glow = isBomb ? "rgba(255,180,60,0.55)" : "rgba(255,90,130,0.55)";
+    const isTriple = p.kind === "triple";
+    const accent = isBomb ? "#ffb84a" : isTriple ? "#7df2b0" : "#ff5a7a";
+    const glow = isBomb ? "rgba(255,180,60,0.55)" : isTriple ? "rgba(120,255,180,0.55)" : "rgba(255,90,130,0.55)";
 
     // Outer glow halo
     ctx.save();
