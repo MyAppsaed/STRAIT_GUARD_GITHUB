@@ -269,6 +269,23 @@ export default function StraitGuardGame() {
         </div>
       )}
 
+      {screen === "play" && g && (
+        <div className="absolute bottom-4 z-20 pointer-events-none"
+          style={{ [dir === "rtl" ? "left" : "right"]: "1rem" } as React.CSSProperties}>
+          <button
+            type="button"
+            aria-label={t.useBomb}
+            disabled={g.bombs <= 0}
+            onClick={() => { audio.resume(); if (g.useBomb()) force((n) => (n + 1) % 1000); }}
+            className="pointer-events-auto btn-bomb"
+          >
+            <span className="btn-bomb-icon">💣</span>
+            <span className="btn-bomb-count">{g.bombs}</span>
+            <span className="btn-bomb-label">{t.useBomb}</span>
+          </button>
+        </div>
+      )}
+
 
       {screen === "menu" && (
         <Overlay>
