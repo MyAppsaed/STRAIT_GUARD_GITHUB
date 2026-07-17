@@ -235,7 +235,7 @@ export class EnemySpawner {
   }
 }
 
-export type PowerupKind = "bomb" | "shield";
+export type PowerupKind = "bomb" | "shield" | "triple";
 
 export class Powerup {
   alive = true;
@@ -257,6 +257,47 @@ export class Powerup {
     return (
       Math.abs(s.pos.x - this.pos.x) < s.size.x / 2 + this.radius * 0.8 &&
       Math.abs(s.pos.y - this.pos.y) < s.size.y / 2 + this.radius * 0.8
+    );
+  }
+}
+
+// Kamikaze suicide boat: fast small craft that homes on cargo and detonates on contact.
+export class Kamikaze {
+  alive = true;
+  hp = 15;
+  maxHp = 15;
+  size = { x: 22, y: 28 };
+  speed = 190;
+  angle = 0;
+  wobble: number;
+  constructor(public pos: Vec2) {
+    this.wobble = Math.random() * Math.PI * 2;
+  }
+  update(dt: number, target: Vec2) {
+    const dx = target.x - this.pos.x;
+    const dy = target.y - this.pos.y;
+    const d = Math.hypot(dx, dy) || 1;
+    // slight wobble for menace
+    this.wobble += dt * 6;
+    const wob = Math.sin(this.wobble) * 0.4;
+    const nx = dx / d, ny = dy / d;
+    // perpendicular wobble
+    const px = -ny * wob, py = nx * wob;
+    this.pos.x += (nx + px) * this.speed * dt;
+    this.pos.y += (ny + py) * this.speed * dt;
+    this.angle = Math.atan2(ny + py, nx + px);
+  }
+  damage(d: number) { this.hp = Math.max(0, this.hp - d); if (this.hp <= 0) this.alive = false; }
+  hitsBullet(b: Bullet) {
+    return (
+      Math.abs(b.pos.x - this.pos.x) < this.size.x / 2 + b.radius &&
+      Math.abs(b.pos.y - this.pos.y) < this.size.y / 2 + b.radius
+    );
+  }
+  hitsShip(s: Ship) {
+    return (
+      Math.abs(s.pos.x - this.pos.x) < s.size.x / 2 + this.size.x / 2 &&
+      Math.abs(s.pos.y - this.pos.y) < s.size.y / 2 + this.size.y / 2
     );
   }
 }
