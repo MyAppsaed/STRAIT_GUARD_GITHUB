@@ -70,6 +70,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     cargo: "الشحنة", frigate: "الفرقاطة", progress: "التقدم",
     lang: "English", sound: "الصوت", on: "تشغيل", off: "إيقاف",
     score: "النقاط", best: "الأفضل", newBest: "رقم قياسي جديد!", kills: "القتلى",
+    bombs: "قنابل", useBomb: "قنبلة كبرى",
     congrats: "مبروك!", nextLevel: "▶ المستوى التالي",
     allCleared: "تم إنهاء جميع المستويات · قائد أسطوري",
     privacy: "سياسة الخصوصية", contact: "اتصل بنا", about: "عن اللعبة",
