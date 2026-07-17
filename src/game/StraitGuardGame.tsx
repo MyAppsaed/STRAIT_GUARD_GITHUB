@@ -40,6 +40,10 @@ const I18N: Record<Lang, Record<string, string>> = {
     allCleared: "ALL LEVELS CLEARED · LEGENDARY COMMANDER",
     privacy: "PRIVACY POLICY", contact: "CONTACT US", about: "ABOUT GAME",
     testAd: "TEST AD",
+    shop: "UPGRADES", points: "POINTS", buy: "UPGRADE", maxed: "MAX", cost: "COST",
+    tier: "TIER", earned: "+{n} POINTS EARNED",
+    upgFrigateSpeed: "FRIGATE SPEED", upgCargoArmor: "CARGO ARMOR", upgBombCapacity: "MEGA-BOMB CAPACITY",
+    tripleActive: "TRIPLE SHOT",
     privacyBody: [
       "STRAIT-GUARD is a fully offline single-player game. It does not require registration or a user account, and does not directly collect any personal information from you.",
       "The game displays advertisements provided by Google AdMob. To serve ads, Google may collect limited advertising data (such as device identifier, approximate location, and app usage) in accordance with Google's own Privacy Policy.",
