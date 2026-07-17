@@ -385,6 +385,51 @@ export default function StraitGuardGame() {
         </Overlay>
       )}
 
+      {screen === "shop" && (
+        <Overlay>
+          <SgTitle accent="cyan">{t.shop}</SgTitle>
+          <div className="sg-panel px-4 py-2 text-amber-200 tracking-[0.25em] text-sm font-mono">
+            ★ {t.points}: {upgrades.points}
+          </div>
+          <div className="flex flex-col gap-2 w-[min(92vw,420px)]">
+            {(Object.keys(UPGRADES) as UpgradeKey[]).map((k) => {
+              const def = UPGRADES[k];
+              const tier = upgrades.tiers[k];
+              const cost = nextCost(k, upgrades);
+              const label = k === "frigateSpeed" ? t.upgFrigateSpeed : k === "cargoArmor" ? t.upgCargoArmor : t.upgBombCapacity;
+              const cur = def.values[tier];
+              const nxt = tier < def.maxTier ? def.values[tier + 1] : null;
+              const canBuy = cost !== null && upgrades.points >= cost;
+              return (
+                <div key={k} className="sg-panel px-3 py-2 flex flex-col gap-1" dir="ltr">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-cyan-100 text-xs tracking-[0.2em] font-bold">{label}</span>
+                    <span className="text-cyan-200/70 text-[10px] tracking-[0.2em]">{t.tier} {tier}/{def.maxTier}</span>
+                  </div>
+                  <div className="flex justify-between items-baseline text-[11px] font-mono">
+                    <span className="text-cyan-50">{cur}{nxt !== null ? ` → ${nxt}` : ""}</span>
+                    <span className="text-amber-200">{cost === null ? t.maxed : `${t.cost} ${cost}★`}</span>
+                  </div>
+                  <button
+                    onClick={click(() => {
+                      const r = purchase(k);
+                      if (r.ok) { setUpgrades(r.state); audio.play("win"); }
+                    })}
+                    disabled={!canBuy}
+                    className="btn-primary !py-2 !text-xs mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {cost === null ? t.maxed : t.buy}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          <button onClick={click(toMenu)} className="btn-ghost">{t.back}</button>
+        </Overlay>
+      )}
+
+
+
 
 
 
