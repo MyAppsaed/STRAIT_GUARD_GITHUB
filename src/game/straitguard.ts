@@ -251,6 +251,11 @@ export class GameManager {
   bullets: Bullet[] = [];
   mines: Mine[] = [];
   mineTimer = 3;
+  powerups: Powerup[] = [];
+  powerupTimer = 6;
+  bombs = 0;
+  // Optional callback so UI can react to inventory/HP changes instantly.
+  onEvent: ((ev: "pickup-bomb" | "pickup-shield" | "bomb-used") => void) | null = null;
   spawner!: EnemySpawner;
   level: 1 | 2 | 3 = 1;
   width: number;
