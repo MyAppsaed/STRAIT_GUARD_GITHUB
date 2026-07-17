@@ -1492,3 +1492,130 @@ function detectKamikazeDeaths(g: GameManager) {
   }
   _prevKamikazes = g.kamikazes.slice();
 }
+
+// ---------- WRECKAGE (decorative burning ship debris) ----------
+// Rendered above water/scenery but below all gameplay entities.
+// Emits continuous fire sparks and smoke via the existing particle system.
+const _wreckEmit = new WeakMap<Wreckage, number>();
+function drawWreckages(ctx: CanvasRenderingContext2D, wrecks: Wreckage[], dt: number) {
+  for (const w of wrecks) {
+    // Emit fire + smoke particles at throttled rate.
+    let acc = (_wreckEmit.get(w) ?? 0) + dt;
+    while (acc > 0.06) {
+      acc -= 0.06;
+      // fire spark
+      particles.push({
+        x: w.pos.x + (Math.random() - 0.5) * w.size * 0.4,
+        y: w.pos.y - 2 + (Math.random() - 0.5) * 4,
+        vx: (Math.random() - 0.5) * 20,
+        vy: -30 - Math.random() * 40,
+        life: 0.35 + Math.random() * 0.25, maxLife: 0.6,
+        size: 2 + Math.random() * 2,
+        color: Math.random() < 0.5 ? "#ffcf5e" : "#ff6a2a",
+        kind: "spark",
+      });
+      // smoke plume
+      particles.push({
+        x: w.pos.x + (Math.random() - 0.5) * w.size * 0.5,
+        y: w.pos.y - 6,
+        vx: (Math.random() - 0.5) * 12,
+        vy: -18 - Math.random() * 20,
+        life: 1.2 + Math.random() * 0.8, maxLife: 2.0,
+        size: 8 + Math.random() * 8,
+        color: "rgba(45,40,38,0.55)",
+        kind: "smoke",
+      });
+    }
+    _wreckEmit.set(w, acc);
+
+    ctx.save();
+    ctx.translate(w.pos.x, w.pos.y);
+    ctx.rotate(w.rot);
+    const s = w.size;
+
+    // Faint water ring / oil slick around wreck
+    ctx.fillStyle = "rgba(20,15,10,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(0, 4, s * 0.9, s * 0.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (w.variant === "hull") {
+      // Broken hull piece — dark charred plating
+      ctx.fillStyle = "#1e1a17";
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.5, -s * 0.15);
+      ctx.lineTo(s * 0.55, -s * 0.22);
+      ctx.lineTo(s * 0.45, s * 0.18);
+      ctx.lineTo(-s * 0.4, s * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      // rust streaks
+      ctx.fillStyle = "#3a1f10";
+      ctx.fillRect(-s * 0.35, -s * 0.05, s * 0.75, 3);
+      // jagged break edge
+      ctx.fillStyle = "#2a2320";
+      ctx.beginPath();
+      ctx.moveTo(s * 0.55, -s * 0.22);
+      ctx.lineTo(s * 0.65, -s * 0.05);
+      ctx.lineTo(s * 0.5, 0);
+      ctx.lineTo(s * 0.45, s * 0.18);
+      ctx.closePath();
+      ctx.fill();
+      // ember glow
+      ctx.fillStyle = "rgba(255,120,40,0.55)";
+      ctx.beginPath();
+      ctx.ellipse(0, -s * 0.05, s * 0.18, s * 0.08, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (w.variant === "crates") {
+      // Burning crate cluster
+      const boxes: [number, number, number][] = [
+        [-s * 0.32, 0, s * 0.28],
+        [-s * 0.02, -s * 0.08, s * 0.3],
+        [s * 0.28, 0.04, s * 0.24],
+      ];
+      for (const [bx, by, bs] of boxes) {
+        ctx.fillStyle = "#3a2412";
+        ctx.fillRect(bx - bs / 2, by - bs / 2, bs, bs);
+        ctx.strokeStyle = "#1a0f08";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(bx - bs / 2, by - bs / 2, bs, bs);
+        // charred top
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(bx - bs / 2, by - bs / 2, bs, bs * 0.3);
+      }
+      // ember glow
+      ctx.fillStyle = "rgba(255,140,50,0.5)";
+      ctx.beginPath();
+      ctx.ellipse(0, -s * 0.05, s * 0.28, s * 0.1, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Capsized bow — pointed prow sticking out of the water
+      ctx.fillStyle = "#221a15";
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.5, s * 0.15);
+      ctx.lineTo(s * 0.55, -s * 0.05);
+      ctx.lineTo(s * 0.35, s * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      // waterline highlight
+      ctx.fillStyle = "rgba(180,210,230,0.25)";
+      ctx.fillRect(-s * 0.5, s * 0.16, s, 2);
+      // twisted metal
+      ctx.strokeStyle = "#4a2a18";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.1, -s * 0.02);
+      ctx.lineTo(-s * 0.05, -s * 0.2);
+      ctx.lineTo(s * 0.05, -s * 0.1);
+      ctx.stroke();
+      // ember glow
+      ctx.fillStyle = "rgba(255,110,40,0.5)";
+      ctx.beginPath();
+      ctx.ellipse(-s * 0.05, -s * 0.05, s * 0.14, s * 0.07, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+}
+
