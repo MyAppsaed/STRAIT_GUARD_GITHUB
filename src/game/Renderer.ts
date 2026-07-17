@@ -283,6 +283,9 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
 
   drawScenery(ctx, g.cameraY, H, landW, W);
 
+  // ---------- WRECKAGE (background parallax layer, below all gameplay) ----------
+  drawWreckages(ctx, g.wreckages, _dt);
+
   // progress bar
   const prog = g.progress();
   ctx.fillStyle = "rgba(0,0,0,0.4)";
