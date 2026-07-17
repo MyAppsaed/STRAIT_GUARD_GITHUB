@@ -215,6 +215,32 @@ export class EnemySpawner {
   }
 }
 
+export type PowerupKind = "bomb" | "shield";
+
+export class Powerup {
+  alive = true;
+  radius = 18;
+  bob: number;
+  vy = 55;
+  drift: number;
+  age = 0;
+  constructor(public kind: PowerupKind, public pos: Vec2) {
+    this.bob = Math.random() * Math.PI * 2;
+    this.drift = (Math.random() - 0.5) * 30;
+  }
+  update(dt: number) {
+    this.age += dt;
+    this.pos.y += this.vy * dt;
+    this.pos.x += Math.sin(this.age * 1.5 + this.bob) * this.drift * dt;
+  }
+  hitsShip(s: Ship) {
+    return (
+      Math.abs(s.pos.x - this.pos.x) < s.size.x / 2 + this.radius * 0.8 &&
+      Math.abs(s.pos.y - this.pos.y) < s.size.y / 2 + this.radius * 0.8
+    );
+  }
+}
+
 export type GameStatus = "menu" | "playing" | "paused" | "win" | "lose";
 
 export class GameManager {
