@@ -312,6 +312,7 @@ export default function StraitGuardGame() {
             </button>
           </div>
           <div className="flex gap-2 mt-1 flex-wrap justify-center">
+            <button onClick={click(() => setScreen("shop"))} className="btn-ghost">🛠 {t.shop} · {upgrades.points}★</button>
             <button onClick={click(() => setScreen("about"))} className="btn-ghost">{t.about}</button>
             <button onClick={click(() => setScreen("privacy"))} className="btn-ghost">{t.privacy}</button>
             <button onClick={click(() => setScreen("contact"))} className="btn-ghost">{t.contact}</button>
