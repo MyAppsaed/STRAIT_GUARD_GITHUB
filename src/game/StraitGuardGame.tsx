@@ -34,6 +34,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     cargo: "CARGO", frigate: "FRIGATE", progress: "PROGRESS",
     lang: "العربية", sound: "SOUND", on: "ON", off: "OFF",
     score: "SCORE", best: "BEST", newBest: "NEW HIGH SCORE!", kills: "KILLS",
+    bombs: "BOMBS", useBomb: "MEGA BOMB",
     congrats: "CONGRATULATIONS!", nextLevel: "▶ NEXT LEVEL",
     allCleared: "ALL LEVELS CLEARED · LEGENDARY COMMANDER",
     privacy: "PRIVACY POLICY", contact: "CONTACT US", about: "ABOUT GAME",
@@ -69,6 +70,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     cargo: "الشحنة", frigate: "الفرقاطة", progress: "التقدم",
     lang: "English", sound: "الصوت", on: "تشغيل", off: "إيقاف",
     score: "النقاط", best: "الأفضل", newBest: "رقم قياسي جديد!", kills: "القتلى",
+    bombs: "قنابل", useBomb: "قنبلة كبرى",
     congrats: "مبروك!", nextLevel: "▶ المستوى التالي",
     allCleared: "تم إنهاء جميع المستويات · قائد أسطوري",
     privacy: "سياسة الخصوصية", contact: "اتصل بنا", about: "عن اللعبة",
@@ -267,6 +269,23 @@ export default function StraitGuardGame() {
         </div>
       )}
 
+      {screen === "play" && g && (
+        <div className="absolute bottom-4 z-20 pointer-events-none"
+          style={{ [dir === "rtl" ? "left" : "right"]: "1rem" } as React.CSSProperties}>
+          <button
+            type="button"
+            aria-label={t.useBomb}
+            disabled={g.bombs <= 0}
+            onClick={() => { audio.resume(); if (g.useBomb()) force((n) => (n + 1) % 1000); }}
+            className="pointer-events-auto btn-bomb"
+          >
+            <span className="btn-bomb-icon">💣</span>
+            <span className="btn-bomb-count">{g.bombs}</span>
+            <span className="btn-bomb-label">{t.useBomb}</span>
+          </button>
+        </div>
+      )}
+
 
       {screen === "menu" && (
         <Overlay>
@@ -451,6 +470,21 @@ export default function StraitGuardGame() {
         .sg-tagline { color: #9fd8ff; letter-spacing:.45em; font-size:11px; font-weight:700;
           text-shadow: 0 0 12px rgba(80,200,255,.45); }
         [dir="rtl"] .sg-tagline { letter-spacing:.2em; }
+        .btn-bomb {
+          display:flex; flex-direction:column; align-items:center; justify-content:center;
+          width:72px; height:72px; border-radius:50%;
+          background: radial-gradient(circle at 30% 30%, #ffcf5e 0%, #ff6a1f 55%, #7a1a05 100%);
+          border:2px solid rgba(255,220,140,.9);
+          box-shadow: 0 0 22px rgba(255,140,40,.7), inset 0 0 12px rgba(0,0,0,.5);
+          color:#fff; font-weight:900; text-shadow:0 1px 2px rgba(0,0,0,.7);
+          transition: transform .1s, filter .15s;
+        }
+        .btn-bomb:hover:not(:disabled){ transform: scale(1.06); filter:brightness(1.1); }
+        .btn-bomb:active:not(:disabled){ transform: scale(0.94); }
+        .btn-bomb:disabled { filter: grayscale(0.7) brightness(0.55); opacity: .75; }
+        .btn-bomb-icon { font-size: 22px; line-height:1; }
+        .btn-bomb-count { font-size: 14px; line-height:1; margin-top:2px; font-family: ui-monospace, monospace; }
+        .btn-bomb-label { font-size: 7px; letter-spacing:.15em; margin-top:2px; opacity:.9; }
       `}</style>
 
       <div className="sr-only">Levels available: {Object.keys(LEVELS).join(", ")}</div>

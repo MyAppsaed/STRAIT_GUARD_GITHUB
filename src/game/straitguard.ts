@@ -215,6 +215,32 @@ export class EnemySpawner {
   }
 }
 
+export type PowerupKind = "bomb" | "shield";
+
+export class Powerup {
+  alive = true;
+  radius = 18;
+  bob: number;
+  vy = 55;
+  drift: number;
+  age = 0;
+  constructor(public kind: PowerupKind, public pos: Vec2) {
+    this.bob = Math.random() * Math.PI * 2;
+    this.drift = (Math.random() - 0.5) * 30;
+  }
+  update(dt: number) {
+    this.age += dt;
+    this.pos.y += this.vy * dt;
+    this.pos.x += Math.sin(this.age * 1.5 + this.bob) * this.drift * dt;
+  }
+  hitsShip(s: Ship) {
+    return (
+      Math.abs(s.pos.x - this.pos.x) < s.size.x / 2 + this.radius * 0.8 &&
+      Math.abs(s.pos.y - this.pos.y) < s.size.y / 2 + this.radius * 0.8
+    );
+  }
+}
+
 export type GameStatus = "menu" | "playing" | "paused" | "win" | "lose";
 
 export class GameManager {
@@ -225,6 +251,11 @@ export class GameManager {
   bullets: Bullet[] = [];
   mines: Mine[] = [];
   mineTimer = 3;
+  powerups: Powerup[] = [];
+  powerupTimer = 6;
+  bombs = 0;
+  // Optional callback so UI can react to inventory/HP changes instantly.
+  onEvent: ((ev: "pickup-bomb" | "pickup-shield" | "bomb-used") => void) | null = null;
   spawner!: EnemySpawner;
   level: 1 | 2 | 3 = 1;
   width: number;
@@ -254,6 +285,9 @@ export class GameManager {
     this.bullets = [];
     this.mines = [];
     this.mineTimer = level === 1 ? 6 : level === 2 ? 4 : 2.5;
+    this.powerups = [];
+    this.powerupTimer = 5 + Math.random() * 4;
+    this.bombs = 0;
     this.travelled = 0;
     this.cameraY = 0;
     this.score = 0;
@@ -391,6 +425,40 @@ export class GameManager {
     }
     this.mines = this.mines.filter((m) => m.alive && m.pos.y < this.height + 80);
 
+    // --- Powerup spawn (low probability, from top of screen) ---
+    this.powerupTimer -= dt;
+    if (this.powerupTimer <= 0) {
+      const base = this.level === 1 ? 12 : this.level === 2 ? 14 : 16;
+      this.powerupTimer = base + Math.random() * base * 0.7;
+      const laneMin = 140, laneMax = this.width - 140;
+      if (laneMax > laneMin) {
+        const px = laneMin + Math.random() * (laneMax - laneMin);
+        // Bombs rarer than shields.
+        const kind: PowerupKind = Math.random() < 0.4 ? "bomb" : "shield";
+        this.powerups.push(new Powerup(kind, { x: px, y: -30 }));
+      }
+    }
+    for (const p of this.powerups) {
+      p.update(dt);
+      if (!p.alive) continue;
+      if (p.hitsShip(this.player) || p.hitsShip(this.cargo)) {
+        p.alive = false;
+        audio.play("win");
+        Haptics.pulse("light");
+        if (p.kind === "bomb") {
+          this.bombs += 1;
+          this.onEvent?.("pickup-bomb");
+        } else {
+          // Heal player: +40 HP, allow modest overheal above starting maxHp.
+          const cap = Math.max(this.player.maxHp, this.player.hp + 40);
+          this.player.hp = Math.min(cap, this.player.hp + 40);
+          if (cap > this.player.maxHp) this.player.maxHp = cap;
+          this.onEvent?.("pickup-shield");
+        }
+      }
+    }
+    this.powerups = this.powerups.filter((p) => p.alive && p.pos.y < this.height + 40);
+
     this.bullets = this.bullets.filter((b) => b.alive);
     this.enemies = this.enemies.filter((e) => e.alive && e.pos.y < this.height + 80);
 
@@ -412,5 +480,29 @@ export class GameManager {
 
   progress(): number {
     return Math.min(1, this.travelled / LEVELS[this.level].durationPx);
+  }
+
+  // Mega-Bomb: wipe all active enemies, award cumulative bounty, flag FX.
+  megaBombFlash = 0; // seconds remaining of screen-clear flash (renderer reads this)
+  useBomb(): boolean {
+    if (this.status !== "playing" || this.bombs <= 0) return false;
+    this.bombs -= 1;
+    let bounty = 0;
+    for (const e of this.enemies) {
+      if (!e.alive) continue;
+      const b = e.kind === "heavy" ? 250 : e.kind === "fast" ? 150 : 100;
+      bounty += b;
+      this.kills += 1;
+      e.hp = 0;
+    }
+    // Also detonate mines on screen.
+    for (const m of this.mines) if (m.alive) { m.hp = 0; m.alive = false; bounty += 75; }
+    this.score += bounty;
+    this.megaBombFlash = 0.9;
+    audio.play("explosion");
+    audio.play("win");
+    Haptics.pulse("gameover");
+    this.onEvent?.("bomb-used");
+    return true;
   }
 }
