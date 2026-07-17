@@ -481,4 +481,28 @@ export class GameManager {
   progress(): number {
     return Math.min(1, this.travelled / LEVELS[this.level].durationPx);
   }
+
+  // Mega-Bomb: wipe all active enemies, award cumulative bounty, flag FX.
+  megaBombFlash = 0; // seconds remaining of screen-clear flash (renderer reads this)
+  useBomb(): boolean {
+    if (this.status !== "playing" || this.bombs <= 0) return false;
+    this.bombs -= 1;
+    let bounty = 0;
+    for (const e of this.enemies) {
+      if (!e.alive) continue;
+      const b = e.kind === "heavy" ? 250 : e.kind === "fast" ? 150 : 100;
+      bounty += b;
+      this.kills += 1;
+      e.hp = 0;
+    }
+    // Also detonate mines on screen.
+    for (const m of this.mines) if (m.alive) { m.hp = 0; m.alive = false; bounty += 75; }
+    this.score += bounty;
+    this.megaBombFlash = 0.9;
+    audio.play("explosion");
+    audio.play("win");
+    Haptics.pulse("gameover");
+    this.onEvent?.("bomb-used");
+    return true;
+  }
 }
