@@ -388,6 +388,8 @@ export class GameManager {
     this.powerupTimer = 5 + Math.random() * 4;
     this.kamikazes = [];
     this.kamikazeTimer = level === 1 ? 14 : level === 2 ? 9 : 6;
+    this.wreckages = [];
+    this.wreckageTimer = 4 + Math.random() * 6;
     this.bombs = 0;
     this.travelled = 0;
     this.cameraY = 0;
