@@ -517,6 +517,31 @@ export class GameManager {
     }
     this.mines = this.mines.filter((m) => m.alive && m.pos.y < this.height + 80);
 
+    // --- Kamikaze boats ---
+    this.kamikazeTimer -= dt;
+    if (this.kamikazeTimer <= 0) {
+      const base = this.level === 1 ? 16 : this.level === 2 ? 10 : 6.5;
+      this.kamikazeTimer = base + Math.random() * base * 0.5;
+      // Spawn from top-left or top-right corner region.
+      const side = Math.random() < 0.5 ? "L" : "R";
+      const kx = side === "L" ? 130 + Math.random() * 40 : this.width - 130 - Math.random() * 40;
+      const ky = -30 - Math.random() * 40;
+      this.kamikazes.push(new Kamikaze({ x: kx, y: ky }));
+    }
+    for (const k of this.kamikazes) {
+      if (!k.alive) continue;
+      k.update(dt, this.cargo.pos);
+      if (k.hitsShip(this.cargo)) {
+        this.cargo.damage(60); k.alive = false;
+        audio.play("explosion"); Haptics.pulse("gameover");
+        this.onEvent?.("kamikaze-hit");
+      } else if (k.hitsShip(this.player)) {
+        this.player.damage(40); k.alive = false;
+        audio.play("explosion"); Haptics.pulse("hit");
+      }
+    }
+    this.kamikazes = this.kamikazes.filter((k) => k.alive && k.pos.y < this.height + 80);
+
     // --- Powerup spawn (low probability, from top of screen) ---
     this.powerupTimer -= dt;
     if (this.powerupTimer <= 0) {
@@ -525,8 +550,9 @@ export class GameManager {
       const laneMin = 140, laneMax = this.width - 140;
       if (laneMax > laneMin) {
         const px = laneMin + Math.random() * (laneMax - laneMin);
-        // Bombs rarer than shields.
-        const kind: PowerupKind = Math.random() < 0.4 ? "bomb" : "shield";
+        // Weighted: 45% shield, 30% triple-shot, 25% bomb.
+        const r = Math.random();
+        const kind: PowerupKind = r < 0.45 ? "shield" : r < 0.75 ? "triple" : "bomb";
         this.powerups.push(new Powerup(kind, { x: px, y: -30 }));
       }
     }
@@ -538,8 +564,11 @@ export class GameManager {
         audio.play("win");
         Haptics.pulse("light");
         if (p.kind === "bomb") {
-          this.bombs += 1;
+          this.bombs = Math.min(this.maxBombs, this.bombs + 1);
           this.onEvent?.("pickup-bomb");
+        } else if (p.kind === "triple") {
+          this.player.activateTriple(10);
+          this.onEvent?.("pickup-triple");
         } else {
           // Heal player: +40 HP, allow modest overheal above starting maxHp.
           const cap = Math.max(this.player.maxHp, this.player.hp + 40);
