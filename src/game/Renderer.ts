@@ -470,6 +470,28 @@ function drawPowerups(ctx: CanvasRenderingContext2D, powerups: Powerup[]) {
       ctx.beginPath();
       ctx.arc(r * 0.78, -r * 0.58, 2.4, 0, Math.PI * 2);
       ctx.fill();
+    } else if (isTriple) {
+      // Triple-shot icon: three upward tracers.
+      ctx.strokeStyle = "#eafff2";
+      ctx.shadowColor = "#7df2b0";
+      ctx.shadowBlur = 8;
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = "round";
+      const len = r * 0.85;
+      const spread = 12 * Math.PI / 180;
+      for (const ang of [-spread, 0, spread]) {
+        ctx.beginPath();
+        ctx.moveTo(Math.sin(ang) * len * 0.15, len * 0.55);
+        ctx.lineTo(Math.sin(ang) * len, -len * 0.6);
+        ctx.stroke();
+      }
+      // bullet heads
+      ctx.fillStyle = "#eafff2";
+      for (const ang of [-spread, 0, spread]) {
+        ctx.beginPath();
+        ctx.arc(Math.sin(ang) * len, -len * 0.6, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
     } else {
       // heart icon
       ctx.fillStyle = "#ff3a5a";
