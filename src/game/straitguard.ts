@@ -223,6 +223,8 @@ export class GameManager {
   cargo!: CargoShipController;
   enemies: EnemyController[] = [];
   bullets: Bullet[] = [];
+  mines: Mine[] = [];
+  mineTimer = 3;
   spawner!: EnemySpawner;
   level: 1 | 2 | 3 = 1;
   width: number;
@@ -250,12 +252,15 @@ export class GameManager {
     this.player = new PlayerShipController({ x: this.width / 2, y: this.height - 220 }, settings.playerHp);
     this.enemies = [];
     this.bullets = [];
+    this.mines = [];
+    this.mineTimer = level === 1 ? 6 : level === 2 ? 4 : 2.5;
     this.travelled = 0;
     this.cameraY = 0;
     this.score = 0;
     this.kills = 0;
     this.status = "playing";
   }
+
 
 
   resize(w: number, h: number) {
