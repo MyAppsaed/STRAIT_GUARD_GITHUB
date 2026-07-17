@@ -34,6 +34,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     cargo: "CARGO", frigate: "FRIGATE", progress: "PROGRESS",
     lang: "العربية", sound: "SOUND", on: "ON", off: "OFF",
     score: "SCORE", best: "BEST", newBest: "NEW HIGH SCORE!", kills: "KILLS",
+    bombs: "BOMBS", useBomb: "MEGA BOMB",
     congrats: "CONGRATULATIONS!", nextLevel: "▶ NEXT LEVEL",
     allCleared: "ALL LEVELS CLEARED · LEGENDARY COMMANDER",
     privacy: "PRIVACY POLICY", contact: "CONTACT US", about: "ABOUT GAME",
