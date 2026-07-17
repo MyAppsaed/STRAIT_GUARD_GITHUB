@@ -87,8 +87,11 @@ export class PlayerShipController extends Ship {
   fireRate = 0.18;
   target: Vec2 | null = null;
   speed = 380;
-  constructor(pos: Vec2, hp = 100) {
+  tripleTimer = 0; // seconds remaining of triple-shot
+  tripleDuration = 10; // for HUD ratio display
+  constructor(pos: Vec2, hp = 100, speed = 380) {
     super(pos, { x: 34, y: 46 }, hp);
+    this.speed = speed;
   }
   setTarget(p: Vec2 | null) { this.target = p; }
   update(dt: number, bounds: { minX: number; maxX: number; minY: number; maxY: number }) {
@@ -105,12 +108,28 @@ export class PlayerShipController extends Ship {
     this.pos.x = Math.max(bounds.minX, Math.min(bounds.maxX, this.pos.x));
     this.pos.y = Math.max(bounds.minY, Math.min(bounds.maxY, this.pos.y));
     this.fireCooldown = Math.max(0, this.fireCooldown - dt);
+    this.tripleTimer = Math.max(0, this.tripleTimer - dt);
   }
-  tryFire(): Bullet | null {
-    if (this.fireCooldown > 0) return null;
+  activateTriple(seconds = 10) {
+    this.tripleDuration = seconds;
+    this.tripleTimer = seconds;
+  }
+  tryFire(): Bullet[] {
+    if (this.fireCooldown > 0) return [];
     this.fireCooldown = this.fireRate;
     audio.play("fire");
-    return new Bullet({ x: this.pos.x, y: this.pos.y - this.size.y / 2 }, { x: 0, y: -560 }, 10, "player", 4, "cannon");
+    const originY = this.pos.y - this.size.y / 2;
+    if (this.tripleTimer > 0) {
+      // Spread cone: straight + ±14° left/right.
+      const speed = 560;
+      const ang = 14 * Math.PI / 180;
+      return [
+        new Bullet({ x: this.pos.x, y: originY }, { x: 0, y: -speed }, 10, "player", 4, "cannon"),
+        new Bullet({ x: this.pos.x, y: originY }, { x: -Math.sin(ang) * speed, y: -Math.cos(ang) * speed }, 9, "player", 4, "cannon"),
+        new Bullet({ x: this.pos.x, y: originY }, { x:  Math.sin(ang) * speed, y: -Math.cos(ang) * speed }, 9, "player", 4, "cannon"),
+      ];
+    }
+    return [new Bullet({ x: this.pos.x, y: originY }, { x: 0, y: -560 }, 10, "player", 4, "cannon")];
   }
 }
 
