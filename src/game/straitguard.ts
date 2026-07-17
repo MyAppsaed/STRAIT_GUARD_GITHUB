@@ -1,6 +1,7 @@
 // StraitGuard - modular game logic, structured for easy Unity port.
 import { audio } from "./audio";
 import { Haptics } from "./haptics";
+import { getValue, loadUpgrades } from "./upgrades";
 
 
 export type Vec2 = { x: number; y: number };
