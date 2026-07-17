@@ -455,6 +455,23 @@ export class GameManager {
           }
         }
         if (consumed) continue;
+        // Player bullets can destroy kamikaze boats.
+        for (const k of this.kamikazes) {
+          if (k.alive && k.hitsBullet(b)) {
+            k.damage(b.damage); b.alive = false; consumed = true;
+            if (!k.alive) {
+              audio.play("explosion");
+              this.score += 120;
+              this.kills += 1;
+              Haptics.pulse("light");
+            } else {
+              audio.play("hit");
+              this.score += 3;
+            }
+            break;
+          }
+        }
+        if (consumed) continue;
         for (const e of this.enemies) {
           if (e.alive && e.hits(b)) {
             e.damage(b.damage); b.alive = false;
