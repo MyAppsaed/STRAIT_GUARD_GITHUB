@@ -288,9 +288,11 @@ export class GameManager {
       this.player.pos.y += shift;
       for (const e of this.enemies) e.pos.y += shift;
       for (const b of this.bullets) b.pos.y += shift;
+      for (const m of this.mines) m.pos.y += shift;
       this.cameraY += shift;
       this.travelled += shift;
     }
+
 
     const sideMargin = Math.max(28, Math.min(60, this.width * 0.08));
     this.player.update(dt, {
