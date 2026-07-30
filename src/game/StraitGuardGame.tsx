@@ -192,27 +192,60 @@ export default function StraitGuardGame() {
     rafRef.current = requestAnimationFrame(loop);
 
 
+    canvas.style.touchAction = "none";
+    let activePointerId: number | null = null;
+
     const getPos = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect();
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     };
+    const releasePointer = (pointerId: number) => {
+      if (canvas.hasPointerCapture(pointerId)) {
+        canvas.releasePointerCapture(pointerId);
+      }
+      activePointerId = null;
+    };
     const onDown = (e: PointerEvent) => {
       const g = gameRef.current;
       if (!g || g.status !== "playing") return;
+      if (activePointerId !== null && activePointerId !== e.pointerId) return;
+      e.preventDefault();
+      activePointerId = e.pointerId;
       canvas.setPointerCapture(e.pointerId);
       g.player.setTarget(getPos(e));
     };
     const onMove = (e: PointerEvent) => {
       const g = gameRef.current;
-      if (!g || g.status !== "playing") return;
-      if (e.buttons === 0 && e.pointerType === "mouse") return;
+      if (!g || g.status !== "playing" || activePointerId !== e.pointerId) return;
+      if (e.pointerType === "mouse" && e.buttons === 0) return;
+      e.preventDefault();
       g.player.setTarget(getPos(e));
     };
-    const onUp = () => { gameRef.current?.player.setTarget(null); };
+    const onUp = (e: PointerEvent) => {
+      if (activePointerId !== e.pointerId) return;
+      e.preventDefault();
+
+      const g = gameRef.current;
+      if (g?.status === "playing") {
+        if (e.pointerType === "mouse") {
+          g.player.setTarget(null);
+        } else {
+          // Keep the final touch position as the target so a quick tap moves
+          // the frigate all the way there. Dragging still tracks continuously.
+          g.player.setTarget(getPos(e));
+        }
+      }
+      releasePointer(e.pointerId);
+    };
+    const onCancel = (e: PointerEvent) => {
+      if (activePointerId !== e.pointerId) return;
+      gameRef.current?.player.setTarget(null);
+      releasePointer(e.pointerId);
+    };
     canvas.addEventListener("pointerdown", onDown);
     canvas.addEventListener("pointermove", onMove);
     canvas.addEventListener("pointerup", onUp);
-    canvas.addEventListener("pointercancel", onUp);
+    canvas.addEventListener("pointercancel", onCancel);
 
     return () => {
       window.removeEventListener("resize", resize);
@@ -220,7 +253,7 @@ export default function StraitGuardGame() {
       canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerup", onUp);
-      canvas.removeEventListener("pointercancel", onUp);
+      canvas.removeEventListener("pointercancel", onCancel);
     };
   }, []);
 
@@ -275,6 +308,7 @@ export default function StraitGuardGame() {
           width: "100%",
           height: "100%",
           display: "block",
+          touchAction: "none",
         }}
       />
 
