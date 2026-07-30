@@ -247,7 +247,7 @@ export default function StraitGuardGame() {
   const dir = lang === "ar" ? "rtl" : "ltr";
 
   return (
-    <div dir={dir} className="relative w-full h-[100svh] bg-slate-900 overflow-hidden select-none touch-none">
+    <div dir={dir} className="sg-app-root w-full bg-slate-900 overflow-hidden select-none touch-none">
       {loading && <SplashScreen onDone={() => setLoading(false)} />}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full block" />
 
