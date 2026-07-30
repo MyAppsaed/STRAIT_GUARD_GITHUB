@@ -137,8 +137,64 @@
     border-color: var(--color-border);
   }
 
-  body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
+  html,
+  body,
+  #root {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: #0f172a;
   }
+
+  body {
+    background-color: #0f172a;
+    color: var(--color-foreground);
+    min-height: 100vh;
+    overscroll-behavior: none;
+  }
+}
+
+/*
+ * Critical Capacitor layout rules live outside Tailwind so the game still
+ * fills older Android WebViews. The first height is the fallback; newer
+ * engines override it with a dynamic viewport unit.
+ */
+.sg-app-root {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+@supports (height: 100svh) {
+  body {
+    min-height: 100svh;
+  }
+
+  .sg-app-root {
+    height: 100svh;
+  }
+}
+
+@supports (height: 100dvh) {
+  .sg-app-root {
+    height: 100dvh;
+  }
+}
+
+/* Keep assistive text hidden even if a cached build is missing this utility. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
