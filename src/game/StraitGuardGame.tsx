@@ -247,12 +247,43 @@ export default function StraitGuardGame() {
   const dir = lang === "ar" ? "rtl" : "ltr";
 
   return (
-    <div dir={dir} className="sg-app-root w-full bg-slate-900 overflow-hidden select-none touch-none">
+    <div
+      dir={dir}
+      className="sg-app-root w-full bg-slate-900 overflow-hidden select-none touch-none"
+      style={{
+        position: "fixed",
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        overflow: "hidden",
+        background: "#0f172a",
+      }}
+    >
       {loading && <SplashScreen onDone={() => setLoading(false)} />}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full block" />
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full block"
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          display: "block",
+        }}
+      />
 
       {screen !== "play" && (
-        <div className="absolute top-2 right-2 z-20 pointer-events-auto" dir="ltr">
+        <div
+          className="absolute top-2 right-2 z-20 pointer-events-auto"
+          dir="ltr"
+          style={{ position: "absolute", top: "0.5rem", right: "0.5rem", zIndex: 20, pointerEvents: "auto" }}
+        >
           <button
             type="button"
             data-language-toggle
@@ -307,8 +338,18 @@ export default function StraitGuardGame() {
 
       {screen === "menu" && (
         <Overlay>
-          <img src={logoUrl} alt="StraitGuard"
-            className="w-[min(90vw,520px)] rounded-2xl shadow-2xl ring-1 ring-cyan-400/30" />
+          <img
+            src={logoUrl}
+            alt="StraitGuard"
+            className="w-[min(90vw,520px)] rounded-2xl shadow-2xl ring-1 ring-cyan-400/30"
+            style={{
+              width: "90vw",
+              maxWidth: "520px",
+              maxHeight: "58vh",
+              objectFit: "contain",
+              borderRadius: "1rem",
+            }}
+          />
           <p className="sg-tagline">{t.tagline}</p>
           <button onClick={click(() => setScreen("levels"))} className="btn-primary">{t.start}</button>
           <div className="flex gap-2 mt-2 flex-wrap justify-center">
@@ -558,8 +599,27 @@ export default function StraitGuardGame() {
 
 function Overlay({ children }: { children: React.ReactNode }) {
   return (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 p-6
-      bg-[radial-gradient(ellipse_at_center,rgba(8,20,32,.6),rgba(2,6,12,.92))] backdrop-blur-md">
+    <div
+      className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 p-6
+        bg-[radial-gradient(ellipse_at_center,rgba(8,20,32,.6),rgba(2,6,12,.92))] backdrop-blur-md"
+      style={{
+        position: "absolute",
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        zIndex: 10,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "1rem",
+        padding: "1.5rem",
+        boxSizing: "border-box",
+        overflowY: "auto",
+        background: "radial-gradient(ellipse at center, rgba(8,20,32,.6), rgba(2,6,12,.92))",
+      }}
+    >
       {children}
     </div>
   );
