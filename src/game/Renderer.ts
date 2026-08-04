@@ -1678,7 +1678,7 @@ function drawAirstrike(ctx: CanvasRenderingContext2D, g: GameManager) {
     if (Math.random() < 0.7) {
       particles.push({
         x: a.pos.x - a.dir * 42, y: a.pos.y, vx: -a.dir * 40, vy: (Math.random() - 0.5) * 20,
-        life: 0.5, max: 0.5, size: 6 + Math.random() * 5, color: "rgba(210,225,235,0.5)", kind: "smoke",
+        life: 0.5, maxLife: 0.5, size: 6 + Math.random() * 5, color: "rgba(210,225,235,0.5)", kind: "smoke",
       });
     }
   }
