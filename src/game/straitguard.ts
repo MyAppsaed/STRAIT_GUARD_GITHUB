@@ -767,7 +767,7 @@ export class GameManager {
     for (const e of this.enemies) {
       if (!e.alive) continue;
       const bounty = e.kind === "heavy" ? 250 : e.kind === "fast" ? 150 : 100;
-      targets.push({ x: e.pos.x, y: e.pos.y, bounty, kill: () => { e.hp = 0; e.alive = false; this.kills += 1; } });
+      targets.push({ x: e.pos.x, y: e.pos.y, bounty, kill: () => { e.hp = 0; this.kills += 1; } });
     }
     for (const k of this.kamikazes) {
       if (!k.alive) continue;
