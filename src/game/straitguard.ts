@@ -330,6 +330,27 @@ export class Wreckage {
 
 export type GameStatus = "menu" | "playing" | "paused" | "win" | "lose";
 
+/** Support aircraft that flies across the screen and bombs enemies automatically. */
+export class Aircraft {
+  pos: { x: number; y: number };
+  dir: 1 | -1;
+  speed: number;
+  alive = true;
+  dropTimer: number;
+  constructor(x: number, y: number, dir: 1 | -1, speed = 520, dropDelay = 0.2) {
+    this.pos = { x, y };
+    this.dir = dir;
+    this.speed = speed;
+    this.dropTimer = dropDelay;
+  }
+  update(dt: number) {
+    this.pos.x += this.dir * this.speed * dt;
+    this.dropTimer -= dt;
+  }
+}
+
+export type AirBlast = { x: number; y: number; life: number; max: number };
+
 export class GameManager {
   status: GameStatus = "menu";
   player!: PlayerShipController;
@@ -347,7 +368,7 @@ export class GameManager {
   wreckages: Wreckage[] = [];
   wreckageTimer = 8;
   // Optional callback so UI can react to inventory/HP changes instantly.
-  onEvent: ((ev: "pickup-bomb" | "pickup-shield" | "pickup-triple" | "bomb-used" | "kamikaze-hit") => void) | null = null;
+  onEvent: ((ev: "pickup-bomb" | "pickup-shield" | "pickup-triple" | "bomb-used" | "kamikaze-hit" | "airstrike-ready" | "airstrike-used") => void) | null = null;
   spawner!: EnemySpawner;
   level: 1 | 2 | 3 = 1;
   width: number;
@@ -357,6 +378,13 @@ export class GameManager {
   cameraY = 0;
   score = 0;
   kills = 0;
+  // ---- Airstrike support ----
+  aircraft: Aircraft[] = [];
+  airBlasts: AirBlast[] = [];
+  airstrikeReady = false;
+  airstrikeActive = 0; // seconds remaining of the run
+  killsAtLastAirstrike = 0;
+  killsPerAirstrike = 10;
 
 
   constructor(cfg: GameConfig) {
@@ -395,6 +423,13 @@ export class GameManager {
     this.cameraY = 0;
     this.score = 0;
     this.kills = 0;
+    this.aircraft = [];
+    this.airBlasts = [];
+    this.airstrikeReady = false;
+    this.airstrikeActive = 0;
+    this.killsAtLastAirstrike = 0;
+    // Easier to earn on the harder levels, where it is needed most.
+    this.killsPerAirstrike = level === 1 ? 14 : level === 2 ? 10 : 8;
     this.status = "playing";
   }
 
@@ -631,6 +666,17 @@ export class GameManager {
     this.bullets = this.bullets.filter((b) => b.alive);
     this.enemies = this.enemies.filter((e) => e.alive && e.pos.y < this.height + 80);
 
+    this.updateAirstrike(dt);
+    // Earn a new airstrike after enough kills (only one stored at a time).
+    if (!this.airstrikeReady && this.airstrikeActive <= 0 &&
+        this.kills - this.killsAtLastAirstrike >= this.killsPerAirstrike) {
+      this.airstrikeReady = true;
+      this.killsAtLastAirstrike = this.kills;
+      audio.play("win");
+      Haptics.pulse("medium");
+      this.onEvent?.("airstrike-ready");
+    }
+
     if (!this.cargo.alive || !this.player.alive) {
       this.status = "lose"; audio.play("lose"); audio.stopMusic();
       Haptics.pulse("gameover");
@@ -673,5 +719,73 @@ export class GameManager {
     Haptics.pulse("gameover");
     this.onEvent?.("bomb-used");
     return true;
+  }
+
+  /** Launch the earned airstrike: two jets sweep the screen bombing enemies. */
+  useAirstrike(): boolean {
+    if (this.status !== "playing" || !this.airstrikeReady) return false;
+    this.airstrikeReady = false;
+    this.airstrikeActive = 4.5;
+    this.aircraft = [
+      new Aircraft(-140, this.height * 0.28, 1, 560, 0.25),
+      new Aircraft(this.width + 140, this.height * 0.46, -1, 520, 0.6),
+    ];
+    audio.play("explosion");
+    Haptics.pulse("heavy");
+    this.onEvent?.("airstrike-used");
+    return true;
+  }
+
+  private updateAirstrike(dt: number) {
+    for (const b of this.airBlasts) b.life -= dt;
+    this.airBlasts = this.airBlasts.filter((b) => b.life > 0);
+    if (this.airstrikeActive <= 0 && this.aircraft.length === 0) return;
+    this.airstrikeActive = Math.max(0, this.airstrikeActive - dt);
+
+    for (const a of this.aircraft) {
+      a.update(dt);
+      if (a.dropTimer <= 0) {
+        a.dropTimer = 0.35;
+        this.dropAirstrikeBomb(a);
+      }
+      if (a.pos.x < -220 || a.pos.x > this.width + 220) a.alive = false;
+    }
+    this.aircraft = this.aircraft.filter((a) => a.alive);
+
+    // Second pass: jets loop back once while the strike window is open.
+    if (this.aircraft.length === 0 && this.airstrikeActive > 1.2) {
+      this.aircraft = [
+        new Aircraft(-140, this.height * 0.2 + Math.random() * this.height * 0.3, 1, 600, 0.2),
+      ];
+    }
+  }
+
+  /** Bomb the nearest valid target ahead of the jet. */
+  private dropAirstrikeBomb(a: Aircraft) {
+    type T = { x: number; y: number; kill: () => void; bounty: number };
+    const targets: T[] = [];
+    for (const e of this.enemies) {
+      if (!e.alive) continue;
+      const bounty = e.kind === "heavy" ? 250 : e.kind === "fast" ? 150 : 100;
+      targets.push({ x: e.pos.x, y: e.pos.y, bounty, kill: () => { e.hp = 0; e.alive = false; this.kills += 1; } });
+    }
+    for (const k of this.kamikazes) {
+      if (!k.alive) continue;
+      targets.push({ x: k.pos.x, y: k.pos.y, bounty: 120, kill: () => { k.hp = 0; k.alive = false; this.kills += 1; } });
+    }
+    for (const m of this.mines) {
+      if (!m.alive) continue;
+      targets.push({ x: m.pos.x, y: m.pos.y, bounty: 75, kill: () => { m.hp = 0; m.alive = false; } });
+    }
+    if (targets.length === 0) return;
+    // Prefer targets close to the jet's current x position.
+    targets.sort((p, q) => Math.abs(p.x - a.pos.x) - Math.abs(q.x - a.pos.x));
+    const hit = targets[0];
+    if (Math.abs(hit.x - a.pos.x) > 220) return;
+    hit.kill();
+    this.score += hit.bounty;
+    this.airBlasts.push({ x: hit.x, y: hit.y, life: 0.5, max: 0.5 });
+    audio.play("explosion");
+    Haptics.pulse("light");
   }
 }
