@@ -9,6 +9,11 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: false,
   },
+  ios: {
+    contentInset: "never",
+    limitsNavigationsToAppBoundDomains: false,
+    backgroundColor: "#0f172a",
+  },
   plugins: {
     AdMob: {
       // The real AdMob App ID is set in:
