@@ -407,6 +407,9 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   detectBulletDeaths(g, aliveBullets);
 
 
+  // ---------- AIRSTRIKE (jets + bomb blasts) ----------
+  drawAirstrike(ctx, g);
+
   // ---------- PARTICLES ----------
   updateParticles(_dt);
   drawParticles(ctx);
@@ -1619,3 +1622,64 @@ function drawWreckages(ctx: CanvasRenderingContext2D, wrecks: Wreckage[], dt: nu
   }
 }
 
+
+
+// -------- Airstrike --------
+function drawAirstrike(ctx: CanvasRenderingContext2D, g: GameManager) {
+  for (const b of g.airBlasts) {
+    if (b.life > b.max - 0.05) emitExplosion(b.x, b.y, 1.3);
+  }
+  for (const a of g.aircraft) {
+    ctx.save();
+    ctx.translate(a.pos.x, a.pos.y);
+    ctx.scale(a.dir, 1);
+    // shadow on the water
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+    ctx.fillStyle = "#02121e";
+    ctx.beginPath();
+    ctx.ellipse(-6, 34, 30, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    // fuselage
+    ctx.fillStyle = "#4a5560";
+    ctx.beginPath();
+    ctx.moveTo(34, 0);
+    ctx.lineTo(6, -7);
+    ctx.lineTo(-30, -6);
+    ctx.lineTo(-34, 0);
+    ctx.lineTo(-30, 6);
+    ctx.lineTo(6, 7);
+    ctx.closePath();
+    ctx.fill();
+    // wings
+    ctx.fillStyle = "#39424c";
+    ctx.beginPath();
+    ctx.moveTo(6, -4); ctx.lineTo(-14, -30); ctx.lineTo(-24, -30); ctx.lineTo(-8, -4);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(6, 4); ctx.lineTo(-14, 30); ctx.lineTo(-24, 30); ctx.lineTo(-8, 4);
+    ctx.closePath(); ctx.fill();
+    // tail
+    ctx.beginPath();
+    ctx.moveTo(-26, -3); ctx.lineTo(-38, -16); ctx.lineTo(-42, -15); ctx.lineTo(-34, -2);
+    ctx.closePath(); ctx.fill();
+    // canopy
+    ctx.fillStyle = "#9fe4ff";
+    ctx.beginPath();
+    ctx.ellipse(16, 0, 8, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // engine glow / contrail
+    ctx.fillStyle = "rgba(255,170,60,0.85)";
+    ctx.beginPath();
+    ctx.ellipse(-36, 0, 7 + Math.random() * 3, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    if (Math.random() < 0.7) {
+      particles.push({
+        x: a.pos.x - a.dir * 42, y: a.pos.y, vx: -a.dir * 40, vy: (Math.random() - 0.5) * 20,
+        life: 0.5, maxLife: 0.5, size: 6 + Math.random() * 5, color: "rgba(210,225,235,0.5)", kind: "smoke",
+      });
+    }
+  }
+}

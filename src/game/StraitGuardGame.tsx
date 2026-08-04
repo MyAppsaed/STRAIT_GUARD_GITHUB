@@ -37,6 +37,8 @@ const I18N: Record<Lang, Record<string, string>> = {
     lang: "العربية", sound: "SOUND", on: "ON", off: "OFF", vibration: "VIBRATION",
     score: "SCORE", best: "BEST", newBest: "NEW HIGH SCORE!", kills: "KILLS",
     bombs: "BOMBS", useBomb: "MEGA BOMB",
+    airstrike: "AIRSTRIKE", airstrikeReady: "AIRSTRIKE READY!", airstrikeInbound: "AIRSTRIKE INBOUND",
+    airstrikeProgress: "AIRSTRIKE {n}/{m}",
     congrats: "CONGRATULATIONS!", nextLevel: "▶ NEXT LEVEL",
     allCleared: "ALL LEVELS CLEARED · LEGENDARY COMMANDER",
     privacy: "PRIVACY POLICY", contact: "CONTACT US", about: "ABOUT GAME",
@@ -77,6 +79,8 @@ const I18N: Record<Lang, Record<string, string>> = {
     lang: "English", sound: "الصوت", on: "تشغيل", off: "إيقاف", vibration: "الاهتزاز",
     score: "النقاط", best: "الأفضل", newBest: "رقم قياسي جديد!", kills: "القتلى",
     bombs: "قنابل", useBomb: "قنبلة كبرى",
+    airstrike: "غارة جوية", airstrikeReady: "الغارة الجوية جاهزة!", airstrikeInbound: "الطائرات قادمة",
+    airstrikeProgress: "الغارة {n}/{m}",
     congrats: "مبروك!", nextLevel: "▶ المستوى التالي",
     allCleared: "تم إنهاء جميع المستويات · قائد أسطوري",
     privacy: "سياسة الخصوصية", contact: "اتصل بنا", about: "عن اللعبة",
@@ -363,6 +367,28 @@ export default function StraitGuardGame() {
               🔫 {t.tripleActive} · {g.player.tripleTimer.toFixed(1)}s
             </div>
           )}
+          {g.airstrikeActive > 0 && (
+            <div className="sg-panel px-2 py-1 text-[10px] tracking-[0.2em] font-mono text-sky-200">
+              ✈ {t.airstrikeInbound}
+            </div>
+          )}
+          {g.airstrikeActive <= 0 && !g.airstrikeReady && (
+            <div className="sg-panel px-2 py-1 text-[9px] tracking-[0.2em] font-mono text-cyan-300/70">
+              ✈ {t.airstrikeProgress
+                .replace("{n}", String(Math.min(g.killsPerAirstrike, g.kills - g.killsAtLastAirstrike)))
+                .replace("{m}", String(g.killsPerAirstrike))}
+            </div>
+          )}
+          <button
+            type="button"
+            aria-label={t.airstrike}
+            disabled={!g.airstrikeReady}
+            onClick={() => { audio.resume(); if (g.useAirstrike()) force((n) => (n + 1) % 1000); }}
+            className={"pointer-events-auto btn-airstrike" + (g.airstrikeReady ? " is-ready" : "")}
+          >
+            <span className="btn-bomb-icon">✈</span>
+            <span className="btn-bomb-label">{t.airstrike}</span>
+          </button>
           <button
             type="button"
             aria-label={t.useBomb}
@@ -634,6 +660,23 @@ export default function StraitGuardGame() {
         .btn-bomb:disabled { filter: grayscale(0.7) brightness(0.55); opacity: .75; }
         .btn-bomb-icon { font-size: 22px; line-height:1; }
         .btn-bomb-count { font-size: 14px; line-height:1; margin-top:2px; font-family: ui-monospace, monospace; }
+        .btn-airstrike {
+          display:flex; flex-direction:column; align-items:center; justify-content:center;
+          width:72px; height:72px; border-radius:50%;
+          background: radial-gradient(circle at 30% 30%, #8fdcff 0%, #1f7fc4 55%, #072a4a 100%);
+          border:2px solid rgba(160,225,255,.9);
+          box-shadow: 0 0 22px rgba(60,170,255,.6), inset 0 0 12px rgba(0,0,0,.5);
+          color:#fff; font-weight:900; text-shadow:0 1px 2px rgba(0,0,0,.7);
+          transition: transform .1s, filter .15s;
+        }
+        .btn-airstrike:hover:not(:disabled){ transform: scale(1.06); filter:brightness(1.1); }
+        .btn-airstrike:active:not(:disabled){ transform: scale(0.94); }
+        .btn-airstrike:disabled { filter: grayscale(0.75) brightness(0.5); opacity:.7; }
+        .btn-airstrike.is-ready { animation: sg-air-pulse 1.2s ease-in-out infinite; }
+        @keyframes sg-air-pulse {
+          0%,100% { box-shadow: 0 0 18px rgba(60,170,255,.6), inset 0 0 12px rgba(0,0,0,.5); }
+          50% { box-shadow: 0 0 34px rgba(120,220,255,.95), inset 0 0 12px rgba(0,0,0,.5); }
+        }
         .btn-bomb-label { font-size: 7px; letter-spacing:.15em; margin-top:2px; opacity:.9; }
       `}</style>
 
