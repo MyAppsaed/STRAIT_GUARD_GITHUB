@@ -15,6 +15,7 @@ import { creditScore, loadUpgrades, nextCost, purchase, UPGRADES, UpgradeKey, Up
 type Screen = "menu" | "levels" | "play" | "pause" | "win" | "lose" | "privacy" | "contact" | "about" | "shop";
 type Lang = "en" | "ar";
 
+const VIBRATION_KEY = "sg_vibration_enabled";
 const APP_VERSION = "1.0.0";
 const SUPPORT_EMAIL = "budapest2015@gmail.com";
 const COPYRIGHT_YEAR = "2026";
@@ -33,7 +34,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     cargoLost: "Cargo ship destroyed", frigateLost: "Escort frigate sunk",
     playAgain: "▶ PLAY AGAIN", retry: "↻ RETRY",
     cargo: "CARGO", frigate: "FRIGATE", progress: "PROGRESS",
-    lang: "العربية", sound: "SOUND", on: "ON", off: "OFF",
+    lang: "العربية", sound: "SOUND", on: "ON", off: "OFF", vibration: "VIBRATION",
     score: "SCORE", best: "BEST", newBest: "NEW HIGH SCORE!", kills: "KILLS",
     bombs: "BOMBS", useBomb: "MEGA BOMB",
     congrats: "CONGRATULATIONS!", nextLevel: "▶ NEXT LEVEL",
@@ -73,7 +74,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     cargoLost: "تم تدمير سفينة الشحن", frigateLost: "أُغرقت الفرقاطة",
     playAgain: "▶ العب مجددًا", retry: "↻ أعد المحاولة",
     cargo: "الشحنة", frigate: "الفرقاطة", progress: "التقدم",
-    lang: "English", sound: "الصوت", on: "تشغيل", off: "إيقاف",
+    lang: "English", sound: "الصوت", on: "تشغيل", off: "إيقاف", vibration: "الاهتزاز",
     score: "النقاط", best: "الأفضل", newBest: "رقم قياسي جديد!", kills: "القتلى",
     bombs: "قنابل", useBomb: "قنبلة كبرى",
     congrats: "مبروك!", nextLevel: "▶ المستوى التالي",
@@ -113,6 +114,9 @@ export default function StraitGuardGame() {
 
   const [lang, setLang] = useState<Lang>("ar");
   const [muted, setMuted] = useState(false);
+  const [vibration, setVibration] = useState<boolean>(() => {
+    try { return localStorage.getItem(VIBRATION_KEY) !== "0"; } catch { return true; }
+  });
   const [isNativeApp, setIsNativeApp] = useState(false);
   const [, force] = useState(0);
   const [endResult, setEndResult] = useState<{ score: number; best: number; isNew: boolean; kills: number; earned: number } | null>(null);
@@ -134,8 +138,12 @@ export default function StraitGuardGame() {
 
   useEffect(() => {
     audio.setMuted(muted);
-    setHapticsEnabled(!muted);
   }, [muted]);
+
+  useEffect(() => {
+    setHapticsEnabled(vibration);
+    try { localStorage.setItem(VIBRATION_KEY, vibration ? "1" : "0"); } catch { /* ignore */ }
+  }, [vibration]);
 
 
 
@@ -389,6 +397,9 @@ export default function StraitGuardGame() {
           <div className="flex gap-2 mt-2 flex-wrap justify-center">
             <button onClick={click(() => setMuted(!muted))} className="btn-ghost">
               {muted ? "🔇" : "🔊"} {t.sound}: {muted ? t.off : t.on}
+            </button>
+            <button onClick={click(() => setVibration(!vibration))} className="btn-ghost">
+              📳 {t.vibration}: {vibration ? t.on : t.off}
             </button>
           </div>
           <div className="flex gap-2 mt-1 flex-wrap justify-center">
