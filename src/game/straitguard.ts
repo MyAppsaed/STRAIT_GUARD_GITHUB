@@ -451,6 +451,12 @@ export class GameManager {
     this.killsAtLastAirstrike = 0;
     // Easier to earn on the harder levels, where it is needed most.
     this.killsPerAirstrike = level === 1 ? 14 : level === 2 ? 10 : 8;
+    this.docking = false;
+    this.docked = false;
+    this.dockTimer = 0;
+    this.portY = -9999;
+    this.mileNotice = null;
+    this.lastMileShown = 99;
     this.status = "playing";
   }
 
@@ -473,6 +479,13 @@ export class GameManager {
     if (this.status !== "playing") return;
     const settings = LEVELS[this.level];
 
+    if (this.mileNotice) {
+      this.mileNotice.t += dt;
+      if (this.mileNotice.t >= this.mileNotice.dur) this.mileNotice = null;
+    }
+
+    if (this.docking) { this.updateDocking(dt); return; }
+
     this.cargo.update(dt);
     const desiredCargoScreenY = this.height - 140;
     const shift = desiredCargoScreenY - this.cargo.pos.y;
@@ -488,6 +501,15 @@ export class GameManager {
       this.cameraY += shift;
       this.travelled += shift;
     }
+
+    // --- Seaport distance countdown (3 / 2 / 1 miles) ---
+    const remaining = settings.durationPx - this.travelled;
+    const milesLeft = Math.ceil(remaining / MILE_PX);
+    if (milesLeft >= 1 && milesLeft <= 3 && milesLeft < this.lastMileShown) {
+      this.lastMileShown = milesLeft;
+      this.mileNotice = { miles: milesLeft, t: 0, dur: 3.2 };
+    }
+
 
     // --- Wreckage spawner (decorative, non-interactive) ---
     this.wreckageTimer -= dt;
