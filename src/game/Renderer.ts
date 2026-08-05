@@ -34,6 +34,11 @@ let nightMode = false;
 export function setNightMode(v: boolean) { nightMode = v; }
 export function isNightMode() { return nightMode; }
 
+// -------- Localized seaport countdown label --------
+let mileLabel: (n: number) => string = (n) =>
+  n === 1 ? "1 MILE TO SEAPORT" : `${n} MILES TO SEAPORT`;
+export function setMileLabelFn(f: (n: number) => string) { mileLabel = f; }
+
 // -------- Frame-timing (for animations) --------
 let _lastT = 0;
 let _dt = 1 / 60;
