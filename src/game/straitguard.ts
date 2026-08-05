@@ -682,14 +682,52 @@ export class GameManager {
       Haptics.pulse("gameover");
     }
     else if (this.travelled >= settings.durationPx) {
-      // Arrival bonuses: cargo & frigate HP + level multiplier.
+      // Begin the seaport docking sequence; the win screen shows after it.
+      this.docking = true;
+      this.dockTimer = 0;
+      this.portY = this.cargo.pos.y - DOCK_APPROACH_PX;
+      this.mileNotice = null;
+      audio.play("win");
+    }
+  }
+
+  /** Cinematic: cargo glides into the seaport before "Mission Complete". */
+  private updateDocking(dt: number) {
+    this.dockTimer += dt;
+    const k = Math.min(1, this.dockTimer / this.dockDuration);
+    const ease = 1 - Math.pow(1 - k, 2);
+    // Cargo (and escort) glide up to the dock.
+    const targetY = this.portY + DOCK_BERTH_PX;
+    this.cargo.pos.y = this.dockStartCargoY + (targetY - this.dockStartCargoY) * ease;
+    this.player.pos.y = this.dockStartPlayerY + (targetY + 90 - this.dockStartPlayerY) * ease;
+    // Clean the field so nothing can damage the ships mid-docking.
+    this.enemies = [];
+    this.kamikazes = [];
+    this.bullets = [];
+    this.mines = [];
+    for (const b of this.airBlasts) b.life -= dt;
+    this.airBlasts = this.airBlasts.filter((b) => b.life > 0);
+    this.aircraft = [];
+    for (const w of this.wreckages) w.update(dt);
+    if (k >= 1) {
       const hpBonus = Math.round(this.cargo.hp * 3 + this.player.hp * 2);
       const levelBonus = this.level * 500;
       this.score += hpBonus + levelBonus;
-      this.status = "win"; audio.play("win"); audio.stopMusic();
+      this.docking = false;
+      this.docked = true;
+      this.status = "win";
+      audio.stopMusic();
       Haptics.pulse("medium");
     }
   }
+
+  /** Screen-space Y of the seaport dock line (may be far above the viewport). */
+  portScreenY(): number {
+    if (this.docking || this.docked) return this.portY;
+    const rem = Math.max(0, LEVELS[this.level].durationPx - this.travelled);
+    return this.cargo.pos.y - DOCK_APPROACH_PX - rem;
+  }
+
 
 
 
