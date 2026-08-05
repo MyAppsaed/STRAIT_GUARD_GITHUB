@@ -79,6 +79,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     playAgain: "▶ العب مجددًا", retry: "↻ أعد المحاولة",
     cargo: "الشحنة", frigate: "الفرقاطة", progress: "التقدم",
     lang: "English", sound: "الصوت", on: "تشغيل", off: "إيقاف", vibration: "الاهتزاز",
+    night: "الوضع الليلي",
     score: "النقاط", best: "الأفضل", newBest: "رقم قياسي جديد!", kills: "القتلى",
     bombs: "قنابل", useBomb: "قنبلة كبرى",
     airstrike: "غارة جوية", airstrikeReady: "الغارة الجوية جاهزة!", airstrikeInbound: "الطائرات قادمة",
