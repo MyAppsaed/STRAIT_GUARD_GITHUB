@@ -209,6 +209,14 @@ export const LEVELS: Record<1 | 2 | 3, LevelSettings> = {
   3: { spawnInterval: [0.7, 1.3], maxEnemies: 12, weights: { basic: 0.3, fast: 0.45, heavy: 0.25 }, cargoSpeed: 38, durationPx: 6800, playerHp: 105, enemyDamageMul: 1.25, enemySpeedMul: 1.2 },
 };
 
+/** Distance (px) of "sea" between the cargo and the seaport at arrival. */
+export const DOCK_APPROACH_PX = 300;
+/** Where the cargo settles relative to the port line while berthing. */
+export const DOCK_BERTH_PX = 150;
+/** World pixels that count as one nautical mile for the countdown watermark. */
+export const MILE_PX = 620;
+
+
 export class EnemySpawner {
   timer = 1.0;
   constructor(public settings: LevelSettings) {}
@@ -386,6 +394,19 @@ export class GameManager {
   killsAtLastAirstrike = 0;
   killsPerAirstrike = 10;
 
+  // ---- Seaport arrival ----
+  docking = false;
+  docked = false;
+  dockTimer = 0;
+  dockDuration = 2.8;
+  portY = -9999;
+  dockStartCargoY = 0;
+  dockStartPlayerY = 0;
+  /** Fading "N Miles to Seaport" watermark. */
+  mileNotice: { miles: number; t: number; dur: number } | null = null;
+  lastMileShown = 99;
+
+
 
   constructor(cfg: GameConfig) {
     this.width = cfg.width;
@@ -430,6 +451,12 @@ export class GameManager {
     this.killsAtLastAirstrike = 0;
     // Easier to earn on the harder levels, where it is needed most.
     this.killsPerAirstrike = level === 1 ? 14 : level === 2 ? 10 : 8;
+    this.docking = false;
+    this.docked = false;
+    this.dockTimer = 0;
+    this.portY = -9999;
+    this.mileNotice = null;
+    this.lastMileShown = 99;
     this.status = "playing";
   }
 
@@ -452,6 +479,13 @@ export class GameManager {
     if (this.status !== "playing") return;
     const settings = LEVELS[this.level];
 
+    if (this.mileNotice) {
+      this.mileNotice.t += dt;
+      if (this.mileNotice.t >= this.mileNotice.dur) this.mileNotice = null;
+    }
+
+    if (this.docking) { this.updateDocking(dt); return; }
+
     this.cargo.update(dt);
     const desiredCargoScreenY = this.height - 140;
     const shift = desiredCargoScreenY - this.cargo.pos.y;
@@ -467,6 +501,15 @@ export class GameManager {
       this.cameraY += shift;
       this.travelled += shift;
     }
+
+    // --- Seaport distance countdown (3 / 2 / 1 miles) ---
+    const remaining = settings.durationPx - this.travelled;
+    const milesLeft = Math.ceil(remaining / MILE_PX);
+    if (milesLeft >= 1 && milesLeft <= 3 && milesLeft < this.lastMileShown) {
+      this.lastMileShown = milesLeft;
+      this.mileNotice = { miles: milesLeft, t: 0, dur: 3.2 };
+    }
+
 
     // --- Wreckage spawner (decorative, non-interactive) ---
     this.wreckageTimer -= dt;
@@ -682,14 +725,54 @@ export class GameManager {
       Haptics.pulse("gameover");
     }
     else if (this.travelled >= settings.durationPx) {
-      // Arrival bonuses: cargo & frigate HP + level multiplier.
+      // Begin the seaport docking sequence; the win screen shows after it.
+      this.docking = true;
+      this.dockTimer = 0;
+      this.portY = this.cargo.pos.y - DOCK_APPROACH_PX;
+      this.dockStartCargoY = this.cargo.pos.y;
+      this.dockStartPlayerY = this.player.pos.y;
+      this.mileNotice = null;
+      audio.play("win");
+    }
+  }
+
+  /** Cinematic: cargo glides into the seaport before "Mission Complete". */
+  private updateDocking(dt: number) {
+    this.dockTimer += dt;
+    const k = Math.min(1, this.dockTimer / this.dockDuration);
+    const ease = 1 - Math.pow(1 - k, 2);
+    // Cargo (and escort) glide up to the dock.
+    const targetY = this.portY + DOCK_BERTH_PX;
+    this.cargo.pos.y = this.dockStartCargoY + (targetY - this.dockStartCargoY) * ease;
+    this.player.pos.y = this.dockStartPlayerY + (targetY + 90 - this.dockStartPlayerY) * ease;
+    // Clean the field so nothing can damage the ships mid-docking.
+    this.enemies = [];
+    this.kamikazes = [];
+    this.bullets = [];
+    this.mines = [];
+    for (const b of this.airBlasts) b.life -= dt;
+    this.airBlasts = this.airBlasts.filter((b) => b.life > 0);
+    this.aircraft = [];
+    for (const w of this.wreckages) w.update(dt);
+    if (k >= 1) {
       const hpBonus = Math.round(this.cargo.hp * 3 + this.player.hp * 2);
       const levelBonus = this.level * 500;
       this.score += hpBonus + levelBonus;
-      this.status = "win"; audio.play("win"); audio.stopMusic();
+      this.docking = false;
+      this.docked = true;
+      this.status = "win";
+      audio.stopMusic();
       Haptics.pulse("medium");
     }
   }
+
+  /** Screen-space Y of the seaport dock line (may be far above the viewport). */
+  portScreenY(): number {
+    if (this.docking || this.docked) return this.portY;
+    const rem = Math.max(0, LEVELS[this.level].durationPx - this.travelled);
+    return this.cargo.pos.y - DOCK_APPROACH_PX - rem;
+  }
+
 
 
 

@@ -29,6 +29,16 @@ function hash(n: number): number {
   return s - Math.floor(s);
 }
 
+// -------- Night mode (visual only; gameplay untouched) --------
+let nightMode = false;
+export function setNightMode(v: boolean) { nightMode = v; }
+export function isNightMode() { return nightMode; }
+
+// -------- Localized seaport countdown label --------
+let mileLabel: (n: number) => string = (n) =>
+  n === 1 ? "1 MILE TO SEAPORT" : `${n} MILES TO SEAPORT`;
+export function setMileLabelFn(f: (n: number) => string) { mileLabel = f; }
+
 // -------- Frame-timing (for animations) --------
 let _lastT = 0;
 let _dt = 1 / 60;
@@ -234,15 +244,22 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   _t += _dt;
 
   // ---------- WATER ----------
+  const night = nightMode;
   const grd = ctx.createLinearGradient(0, 0, 0, H);
-  grd.addColorStop(0, "#062a44");
-  grd.addColorStop(0.55, "#0a3b5a");
-  grd.addColorStop(1, "#0d4666");
+  if (night) {
+    grd.addColorStop(0, "#03101f");
+    grd.addColorStop(0.55, "#051a2c");
+    grd.addColorStop(1, "#07223a");
+  } else {
+    grd.addColorStop(0, "#062a44");
+    grd.addColorStop(0.55, "#0a3b5a");
+    grd.addColorStop(1, "#0d4666");
+  }
   ctx.fillStyle = grd;
   ctx.fillRect(0, 0, W, H);
 
   // caustic sheen
-  ctx.fillStyle = "rgba(120,190,220,0.05)";
+  ctx.fillStyle = night ? "rgba(130,180,255,0.05)" : "rgba(120,190,220,0.05)";
   for (let i = 0; i < 30; i++) {
     const seed = i * 17.3;
     const x = 130 + hash(seed) * (W - 260);
@@ -254,7 +271,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   }
 
   // wave stripes
-  ctx.fillStyle = "rgba(255,255,255,0.05)";
+  ctx.fillStyle = night ? "rgba(190,215,255,0.035)" : "rgba(255,255,255,0.05)";
   const stripeH = 22;
   const offset = (g.cameraY * 0.6) % stripeH;
   for (let y = -stripeH + offset; y < H; y += stripeH * 2) {
@@ -263,17 +280,17 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
 
   // ---------- LAND ----------
   const landW = 110;
-  ctx.fillStyle = "#3b2a1c";
+  ctx.fillStyle = night ? "#1c150e" : "#3b2a1c";
   ctx.fillRect(0, 0, landW, H);
   ctx.fillRect(W - landW, 0, landW, H);
-  ctx.fillStyle = "#3a5a2a";
+  ctx.fillStyle = night ? "#1b2c16" : "#3a5a2a";
   ctx.fillRect(0, 0, landW - 22, H);
   ctx.fillRect(W - landW + 22, 0, landW - 22, H);
-  ctx.fillStyle = "#c9b178";
+  ctx.fillStyle = night ? "#6a5c3e" : "#c9b178";
   ctx.fillRect(landW - 22, 0, 14, H);
   ctx.fillRect(W - landW + 8, 0, 14, H);
   // jagged shore
-  ctx.fillStyle = "#0d4666";
+  ctx.fillStyle = night ? "#07223a" : "#0d4666";
   for (let y = 0; y < H; y += 12) {
     const jL = ((Math.sin((y + g.cameraY) * 0.07) + 1) / 2) * 8;
     const jR = ((Math.cos((y + g.cameraY) * 0.07) + 1) / 2) * 8;
@@ -286,6 +303,20 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   // ---------- WRECKAGE (background parallax layer, below all gameplay) ----------
   drawWreckages(ctx, g.wreckages, _dt);
 
+  // ---------- NIGHT TINT (environment only; ships/FX stay bright) ----------
+  if (night) {
+    ctx.save();
+    ctx.fillStyle = "rgba(4,10,26,0.55)";
+    ctx.fillRect(0, 0, W, H);
+    // Soft moonlight column down the strait keeps the lane readable.
+    const moon = ctx.createLinearGradient(0, 0, 0, H);
+    moon.addColorStop(0, "rgba(150,190,255,0.10)");
+    moon.addColorStop(1, "rgba(150,190,255,0)");
+    ctx.fillStyle = moon;
+    ctx.fillRect(landW, 0, W - landW * 2, H);
+    ctx.restore();
+  }
+
   // progress bar
   const prog = g.progress();
   ctx.fillStyle = "rgba(0,0,0,0.4)";
@@ -293,13 +324,12 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   ctx.fillStyle = `rgba(255,200,60,0.95)`;
   ctx.fillRect(landW, 14, (W - landW * 2) * prog, 4);
 
-  if (prog > 0.82) {
-    const finishWorldY = -200;
-    const finishScreenY = finishWorldY + g.cameraY;
-    if (finishScreenY > -40 && finishScreenY < H) {
-      drawFinishLine(ctx, finishScreenY, landW, W, Math.min(1, (prog - 0.82) / 0.18));
-    }
+  // ---------- SEAPORT (replaces the old finish line) ----------
+  const portY = g.portScreenY();
+  if (portY > -420 && portY < H + 120) {
+    drawSeaport(ctx, portY, landW, W, night);
   }
+
 
   // ---------- SHIPS ----------
   drawWake(ctx, g.cargo.pos.x, g.cargo.pos.y + g.cargo.size.y / 2, g.cargo.size.x * 0.8, 80);
@@ -413,6 +443,10 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   // ---------- PARTICLES ----------
   updateParticles(_dt);
   drawParticles(ctx);
+
+  // ---------- SEAPORT DISTANCE WATERMARK ----------
+  drawMileWatermark(ctx, g, W, H);
+
 
   // ---------- MEGA-BOMB screen-clear flash ----------
   if (g.megaBombFlash > 0) {
@@ -780,25 +814,132 @@ function drawSceneryItem(ctx: CanvasRenderingContext2D, x: number, y: number, ki
   }
 }
 
-function drawFinishLine(ctx: CanvasRenderingContext2D, screenY: number, landW: number, W: number, alpha: number) {
+/**
+ * Seaport at the end of the level: quay, cranes, warehouses and stacked
+ * containers. Purely visual — the docking sequence is driven by GameManager.
+ */
+function drawSeaport(ctx: CanvasRenderingContext2D, screenY: number, landW: number, W: number, night: boolean) {
+  const x0 = landW - 20, x1 = W - landW + 20;
+  const w = x1 - x0;
   ctx.save();
-  ctx.globalAlpha = alpha;
-  const x0 = landW, x1 = W - landW;
-  const step = 16;
-  for (let x = x0, i = 0; x < x1; x += step, i++) {
-    ctx.fillStyle = i % 2 === 0 ? "#fff" : "#111";
-    ctx.fillRect(x, screenY - 6, Math.min(step, x1 - x), 12);
+
+  // Harbour water behind the quay
+  ctx.fillStyle = night ? "#061826" : "#0b3550";
+  ctx.fillRect(x0 - 40, screenY - 260, w + 80, 260);
+
+  // Breakwater arms
+  ctx.fillStyle = night ? "#2b2f36" : "#5b6068";
+  ctx.fillRect(x0 - 40, screenY - 120, 26, 120);
+  ctx.fillRect(x1 + 14, screenY - 120, 26, 120);
+
+  // Quay deck
+  const deckH = 74;
+  ctx.fillStyle = night ? "#3a3f47" : "#7b8189";
+  ctx.fillRect(x0, screenY - deckH, w, deckH);
+  ctx.fillStyle = night ? "#2c3037" : "#666c74";
+  ctx.fillRect(x0, screenY - 8, w, 8);
+  // Fenders along the dock edge
+  ctx.fillStyle = night ? "#16181c" : "#26292e";
+  for (let x = x0 + 12; x < x1 - 10; x += 34) ctx.fillRect(x, screenY - 12, 14, 12);
+
+  // Warehouses at the back of the quay
+  ctx.fillStyle = night ? "#2f3a44" : "#93a0ad";
+  ctx.fillRect(x0 + w * 0.06, screenY - deckH - 34, w * 0.26, 34);
+  ctx.fillRect(x0 + w * 0.62, screenY - deckH - 30, w * 0.3, 30);
+  ctx.fillStyle = night ? "#1e262e" : "#6f7d8a";
+  ctx.fillRect(x0 + w * 0.06, screenY - deckH - 34, w * 0.26, 8);
+  ctx.fillRect(x0 + w * 0.62, screenY - deckH - 30, w * 0.3, 7);
+
+  // Container stacks
+  const colors = ["#c0392b", "#2980b9", "#e0a02a", "#27795a", "#8e44ad"];
+  for (let i = 0; i < 12; i++) {
+    const cx = x0 + 18 + i * (w - 36) / 12;
+    const cw = (w - 36) / 12 - 5;
+    const rows = 1 + Math.floor(hash(i * 3.1) * 3);
+    for (let r = 0; r < rows; r++) {
+      ctx.fillStyle = colors[Math.floor(hash(i * 7.7 + r * 2.3) * colors.length)];
+      if (night) { ctx.globalAlpha = 0.62; }
+      ctx.fillRect(cx, screenY - 26 - r * 12, cw, 10);
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = "rgba(0,0,0,0.45)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(cx, screenY - 26 - r * 12, cw, 10);
+    }
   }
-  ctx.fillStyle = "#ffcc33";
-  ctx.fillRect(x0 - 8, screenY - 14, 8, 28);
-  ctx.fillRect(x1, screenY - 14, 8, 28);
-  ctx.font = "bold 11px ui-sans-serif, system-ui, sans-serif";
+
+  // Gantry cranes
+  for (const cxr of [0.22, 0.5, 0.78]) {
+    const cx = x0 + w * cxr;
+    ctx.strokeStyle = night ? "#c7a04a" : "#f0c040";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(cx - 26, screenY - 6);
+    ctx.lineTo(cx - 26, screenY - deckH - 26);
+    ctx.moveTo(cx + 26, screenY - 6);
+    ctx.lineTo(cx + 26, screenY - deckH - 26);
+    ctx.stroke();
+    // Boom reaching out over the water
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 34, screenY - deckH - 26);
+    ctx.lineTo(cx + 40, screenY - deckH - 26);
+    ctx.stroke();
+    ctx.fillStyle = night ? "#8c6f2e" : "#d9a92f";
+    ctx.fillRect(cx - 12, screenY - deckH - 40, 24, 14);
+    // Hoist cable
+    ctx.strokeStyle = "rgba(20,20,20,0.7)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx + 24, screenY - deckH - 26);
+    ctx.lineTo(cx + 24, screenY - deckH + 4);
+    ctx.stroke();
+  }
+
+  // Harbour lights (stronger at night)
+  for (let i = 0; i < 8; i++) {
+    const lx = x0 + 20 + i * (w - 40) / 7;
+    ctx.save();
+    ctx.fillStyle = night ? "#ffe08a" : "#fff6cf";
+    ctx.shadowColor = "#ffd45e";
+    ctx.shadowBlur = night ? 16 : 6;
+    ctx.beginPath();
+    ctx.arc(lx, screenY - deckH - 6, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Port sign
+  ctx.font = "bold 12px ui-sans-serif, system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(255,255,255,0.95)";
-  ctx.fillText("◆ SAFE HARBOR ◆", (x0 + x1) / 2, screenY - 18);
+  ctx.fillStyle = "rgba(255,225,150,0.95)";
+  ctx.fillText("⚓ SAFE HARBOR PORT ⚓", (x0 + x1) / 2, screenY - deckH - 52);
   ctx.restore();
 }
+
+/** Semi-transparent "N Miles to Seaport" watermark over the sea. */
+function drawMileWatermark(ctx: CanvasRenderingContext2D, g: GameManager, W: number, H: number) {
+  const n = g.mileNotice;
+  if (!n) return;
+  const k = n.t / n.dur;
+  // Fade in over the first 25%, hold, fade out over the last 30%.
+  const alpha = k < 0.25 ? k / 0.25 : k > 0.7 ? Math.max(0, (1 - k) / 0.3) : 1;
+  const label = mileLabel(n.miles);
+  ctx.save();
+  ctx.globalAlpha = alpha * 0.3;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const size = Math.max(22, Math.min(46, W * 0.075));
+  ctx.font = `bold ${size}px ui-sans-serif, system-ui, sans-serif`;
+  ctx.fillStyle = "#eaf6ff";
+  ctx.fillText(label, W / 2, H * 0.4);
+  ctx.globalAlpha = alpha * 0.18;
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "#ffffff";
+  ctx.strokeText(label, W / 2, H * 0.4);
+  ctx.restore();
+}
+
 
 function drawWake(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
   const g = ctx.createLinearGradient(0, y, 0, y + h);

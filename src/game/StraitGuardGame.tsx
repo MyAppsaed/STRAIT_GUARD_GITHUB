@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { GameManager, LEVELS } from "./straitguard";
 import { audio } from "./audio";
 import logoUrl from "@/assets/straitguard-logo.png";
-import { render } from "./Renderer";
+import { render, setNightMode, setMileLabelFn } from "./Renderer";
 import { getHighScore, submitScore } from "./highscore";
 import { AdManager } from "@/ads/AdManager";
 import { setHapticsEnabled } from "./haptics";
@@ -16,6 +16,7 @@ type Screen = "menu" | "levels" | "play" | "pause" | "win" | "lose" | "privacy" 
 type Lang = "en" | "ar";
 
 const VIBRATION_KEY = "sg_vibration_enabled";
+const NIGHT_KEY = "sg_night_mode";
 const APP_VERSION = "1.0.0";
 const SUPPORT_EMAIL = "budapest2015@gmail.com";
 const COPYRIGHT_YEAR = "2026";
@@ -35,6 +36,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     playAgain: "▶ PLAY AGAIN", retry: "↻ RETRY",
     cargo: "CARGO", frigate: "FRIGATE", progress: "PROGRESS",
     lang: "العربية", sound: "SOUND", on: "ON", off: "OFF", vibration: "VIBRATION",
+    night: "NIGHT MODE",
     score: "SCORE", best: "BEST", newBest: "NEW HIGH SCORE!", kills: "KILLS",
     bombs: "BOMBS", useBomb: "MEGA BOMB",
     airstrike: "AIRSTRIKE", airstrikeReady: "AIRSTRIKE READY!", airstrikeInbound: "AIRSTRIKE INBOUND",
@@ -77,6 +79,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     playAgain: "▶ العب مجددًا", retry: "↻ أعد المحاولة",
     cargo: "الشحنة", frigate: "الفرقاطة", progress: "التقدم",
     lang: "English", sound: "الصوت", on: "تشغيل", off: "إيقاف", vibration: "الاهتزاز",
+    night: "الوضع الليلي",
     score: "النقاط", best: "الأفضل", newBest: "رقم قياسي جديد!", kills: "القتلى",
     bombs: "قنابل", useBomb: "قنبلة كبرى",
     airstrike: "غارة جوية", airstrikeReady: "الغارة الجوية جاهزة!", airstrikeInbound: "الطائرات قادمة",
@@ -121,6 +124,9 @@ export default function StraitGuardGame() {
   const [vibration, setVibration] = useState<boolean>(() => {
     try { return localStorage.getItem(VIBRATION_KEY) !== "0"; } catch { return true; }
   });
+  const [night, setNight] = useState<boolean>(() => {
+    try { return localStorage.getItem(NIGHT_KEY) === "1"; } catch { return false; }
+  });
   const [isNativeApp, setIsNativeApp] = useState(false);
   const [, force] = useState(0);
   const [endResult, setEndResult] = useState<{ score: number; best: number; isNew: boolean; kills: number; earned: number } | null>(null);
@@ -143,6 +149,19 @@ export default function StraitGuardGame() {
   useEffect(() => {
     audio.setMuted(muted);
   }, [muted]);
+
+  useEffect(() => {
+    setNightMode(night);
+    try { localStorage.setItem(NIGHT_KEY, night ? "1" : "0"); } catch { /* ignore */ }
+  }, [night]);
+
+  useEffect(() => {
+    setMileLabelFn((n) =>
+      lang === "ar"
+        ? (n === 1 ? "ميل واحد إلى الميناء" : `${n} أميال إلى الميناء`)
+        : (n === 1 ? "1 MILE TO SEAPORT" : `${n} MILES TO SEAPORT`),
+    );
+  }, [lang]);
 
   useEffect(() => {
     setHapticsEnabled(vibration);
@@ -426,6 +445,9 @@ export default function StraitGuardGame() {
             </button>
             <button onClick={click(() => setVibration(!vibration))} className="btn-ghost">
               📳 {t.vibration}: {vibration ? t.on : t.off}
+            </button>
+            <button onClick={click(() => setNight(!night))} className="btn-ghost">
+              {night ? "🌙" : "☀"} {t.night}: {night ? t.on : t.off}
             </button>
           </div>
           <div className="flex gap-2 mt-1 flex-wrap justify-center">
