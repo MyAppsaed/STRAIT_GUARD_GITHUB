@@ -919,7 +919,7 @@ function drawMileWatermark(ctx: CanvasRenderingContext2D, g: GameManager, W: num
   const k = n.t / n.dur;
   // Fade in over the first 25%, hold, fade out over the last 30%.
   const alpha = k < 0.25 ? k / 0.25 : k > 0.7 ? Math.max(0, (1 - k) / 0.3) : 1;
-  const label = n.miles === 1 ? "1 MILE TO SEAPORT" : `${n.miles} MILES TO SEAPORT`;
+  const label = mileLabel(n.miles);
   ctx.save();
   ctx.globalAlpha = alpha * 0.3;
   ctx.textAlign = "center";
