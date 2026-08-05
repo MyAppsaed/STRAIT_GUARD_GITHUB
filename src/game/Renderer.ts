@@ -234,15 +234,22 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   _t += _dt;
 
   // ---------- WATER ----------
+  const night = nightMode;
   const grd = ctx.createLinearGradient(0, 0, 0, H);
-  grd.addColorStop(0, "#062a44");
-  grd.addColorStop(0.55, "#0a3b5a");
-  grd.addColorStop(1, "#0d4666");
+  if (night) {
+    grd.addColorStop(0, "#03101f");
+    grd.addColorStop(0.55, "#051a2c");
+    grd.addColorStop(1, "#07223a");
+  } else {
+    grd.addColorStop(0, "#062a44");
+    grd.addColorStop(0.55, "#0a3b5a");
+    grd.addColorStop(1, "#0d4666");
+  }
   ctx.fillStyle = grd;
   ctx.fillRect(0, 0, W, H);
 
   // caustic sheen
-  ctx.fillStyle = "rgba(120,190,220,0.05)";
+  ctx.fillStyle = night ? "rgba(130,180,255,0.05)" : "rgba(120,190,220,0.05)";
   for (let i = 0; i < 30; i++) {
     const seed = i * 17.3;
     const x = 130 + hash(seed) * (W - 260);
@@ -254,7 +261,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   }
 
   // wave stripes
-  ctx.fillStyle = "rgba(255,255,255,0.05)";
+  ctx.fillStyle = night ? "rgba(190,215,255,0.035)" : "rgba(255,255,255,0.05)";
   const stripeH = 22;
   const offset = (g.cameraY * 0.6) % stripeH;
   for (let y = -stripeH + offset; y < H; y += stripeH * 2) {
@@ -263,17 +270,17 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
 
   // ---------- LAND ----------
   const landW = 110;
-  ctx.fillStyle = "#3b2a1c";
+  ctx.fillStyle = night ? "#1c150e" : "#3b2a1c";
   ctx.fillRect(0, 0, landW, H);
   ctx.fillRect(W - landW, 0, landW, H);
-  ctx.fillStyle = "#3a5a2a";
+  ctx.fillStyle = night ? "#1b2c16" : "#3a5a2a";
   ctx.fillRect(0, 0, landW - 22, H);
   ctx.fillRect(W - landW + 22, 0, landW - 22, H);
-  ctx.fillStyle = "#c9b178";
+  ctx.fillStyle = night ? "#6a5c3e" : "#c9b178";
   ctx.fillRect(landW - 22, 0, 14, H);
   ctx.fillRect(W - landW + 8, 0, 14, H);
   // jagged shore
-  ctx.fillStyle = "#0d4666";
+  ctx.fillStyle = night ? "#07223a" : "#0d4666";
   for (let y = 0; y < H; y += 12) {
     const jL = ((Math.sin((y + g.cameraY) * 0.07) + 1) / 2) * 8;
     const jR = ((Math.cos((y + g.cameraY) * 0.07) + 1) / 2) * 8;
@@ -286,6 +293,20 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   // ---------- WRECKAGE (background parallax layer, below all gameplay) ----------
   drawWreckages(ctx, g.wreckages, _dt);
 
+  // ---------- NIGHT TINT (environment only; ships/FX stay bright) ----------
+  if (night) {
+    ctx.save();
+    ctx.fillStyle = "rgba(4,10,26,0.55)";
+    ctx.fillRect(0, 0, W, H);
+    // Soft moonlight column down the strait keeps the lane readable.
+    const moon = ctx.createLinearGradient(0, 0, 0, H);
+    moon.addColorStop(0, "rgba(150,190,255,0.10)");
+    moon.addColorStop(1, "rgba(150,190,255,0)");
+    ctx.fillStyle = moon;
+    ctx.fillRect(landW, 0, W - landW * 2, H);
+    ctx.restore();
+  }
+
   // progress bar
   const prog = g.progress();
   ctx.fillStyle = "rgba(0,0,0,0.4)";
@@ -293,13 +314,12 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   ctx.fillStyle = `rgba(255,200,60,0.95)`;
   ctx.fillRect(landW, 14, (W - landW * 2) * prog, 4);
 
-  if (prog > 0.82) {
-    const finishWorldY = -200;
-    const finishScreenY = finishWorldY + g.cameraY;
-    if (finishScreenY > -40 && finishScreenY < H) {
-      drawFinishLine(ctx, finishScreenY, landW, W, Math.min(1, (prog - 0.82) / 0.18));
-    }
+  // ---------- SEAPORT (replaces the old finish line) ----------
+  const portY = g.portScreenY();
+  if (portY > -420 && portY < H + 120) {
+    drawSeaport(ctx, portY, landW, W, night);
   }
+
 
   // ---------- SHIPS ----------
   drawWake(ctx, g.cargo.pos.x, g.cargo.pos.y + g.cargo.size.y / 2, g.cargo.size.x * 0.8, 80);
