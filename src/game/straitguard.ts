@@ -729,6 +729,8 @@ export class GameManager {
       this.docking = true;
       this.dockTimer = 0;
       this.portY = this.cargo.pos.y - DOCK_APPROACH_PX;
+      this.dockStartCargoY = this.cargo.pos.y;
+      this.dockStartPlayerY = this.player.pos.y;
       this.mileNotice = null;
       audio.play("win");
     }
