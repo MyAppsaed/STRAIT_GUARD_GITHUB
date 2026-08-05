@@ -209,6 +209,14 @@ export const LEVELS: Record<1 | 2 | 3, LevelSettings> = {
   3: { spawnInterval: [0.7, 1.3], maxEnemies: 12, weights: { basic: 0.3, fast: 0.45, heavy: 0.25 }, cargoSpeed: 38, durationPx: 6800, playerHp: 105, enemyDamageMul: 1.25, enemySpeedMul: 1.2 },
 };
 
+/** Distance (px) of "sea" between the cargo and the seaport at arrival. */
+export const DOCK_APPROACH_PX = 300;
+/** Where the cargo settles relative to the port line while berthing. */
+export const DOCK_BERTH_PX = 150;
+/** World pixels that count as one nautical mile for the countdown watermark. */
+export const MILE_PX = 620;
+
+
 export class EnemySpawner {
   timer = 1.0;
   constructor(public settings: LevelSettings) {}
