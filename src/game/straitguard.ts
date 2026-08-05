@@ -204,7 +204,7 @@ export interface LevelSettings {
 }
 
 export const LEVELS: Record<1 | 2 | 3, LevelSettings> = {
-  1: { spawnInterval: [2.8, 4.2], maxEnemies: 3, weights: { basic: 1, fast: 0, heavy: 0 }, cargoSpeed: 22, durationPx: 3600, playerHp: 150, enemyDamageMul: 0.7, enemySpeedMul: 0.8 },
+  1: { spawnInterval: [2.8, 4.2], maxEnemies: 3, weights: { basic: 1, fast: 0, heavy: 0 }, cargoSpeed: 22, durationPx: 900, playerHp: 150, enemyDamageMul: 0.7, enemySpeedMul: 0.8 },
   2: { spawnInterval: [1.2, 2.0], maxEnemies: 8, weights: { basic: 0.45, fast: 0.4, heavy: 0.15 }, cargoSpeed: 32, durationPx: 5400, playerHp: 115, enemyDamageMul: 1.1, enemySpeedMul: 1.05 },
   3: { spawnInterval: [0.7, 1.3], maxEnemies: 12, weights: { basic: 0.3, fast: 0.45, heavy: 0.25 }, cargoSpeed: 38, durationPx: 6800, playerHp: 105, enemyDamageMul: 1.25, enemySpeedMul: 1.2 },
 };
