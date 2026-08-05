@@ -439,6 +439,10 @@ export function render(ctx: CanvasRenderingContext2D, g: GameManager) {
   updateParticles(_dt);
   drawParticles(ctx);
 
+  // ---------- SEAPORT DISTANCE WATERMARK ----------
+  drawMileWatermark(ctx, g, W, H);
+
+
   // ---------- MEGA-BOMB screen-clear flash ----------
   if (g.megaBombFlash > 0) {
     const a = Math.min(1, g.megaBombFlash / 0.9);
