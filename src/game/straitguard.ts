@@ -386,6 +386,19 @@ export class GameManager {
   killsAtLastAirstrike = 0;
   killsPerAirstrike = 10;
 
+  // ---- Seaport arrival ----
+  docking = false;
+  docked = false;
+  dockTimer = 0;
+  dockDuration = 2.8;
+  portY = -9999;
+  dockStartCargoY = 0;
+  dockStartPlayerY = 0;
+  /** Fading "N Miles to Seaport" watermark. */
+  mileNotice: { miles: number; t: number; dur: number } | null = null;
+  lastMileShown = 99;
+
+
 
   constructor(cfg: GameConfig) {
     this.width = cfg.width;
