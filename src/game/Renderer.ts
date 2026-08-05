@@ -29,6 +29,11 @@ function hash(n: number): number {
   return s - Math.floor(s);
 }
 
+// -------- Night mode (visual only; gameplay untouched) --------
+let nightMode = false;
+export function setNightMode(v: boolean) { nightMode = v; }
+export function isNightMode() { return nightMode; }
+
 // -------- Frame-timing (for animations) --------
 let _lastT = 0;
 let _dt = 1 / 60;
