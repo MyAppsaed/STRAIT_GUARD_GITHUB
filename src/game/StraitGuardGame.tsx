@@ -345,9 +345,15 @@ export default function StraitGuardGame() {
 
       {screen !== "play" && (
         <div
-          className="absolute top-2 right-2 z-20 pointer-events-auto"
+          className="absolute z-20 pointer-events-auto"
           dir="ltr"
-          style={{ position: "absolute", top: "0.5rem", right: "0.5rem", zIndex: 20, pointerEvents: "auto" }}
+          style={{
+            position: "absolute",
+            top: "calc(var(--sg-inset-top) + 0.5rem)",
+            right: "calc(var(--sg-inset-right) + 0.5rem)",
+            zIndex: 20,
+            pointerEvents: "auto",
+          }}
         >
           <button
             type="button"
@@ -362,7 +368,7 @@ export default function StraitGuardGame() {
       )}
 
       {screen === "play" && g && (
-        <div className="absolute top-0 left-0 right-0 p-2 sm:p-3 flex items-start justify-between gap-2 pointer-events-none">
+        <div className="absolute top-0 left-0 right-0 sg-safe-top pb-2 flex items-start justify-between gap-2 pointer-events-none">
           <div className="space-y-1.5 pointer-events-auto sg-panel px-2 sm:px-3 py-1.5 sm:py-2 max-w-[60vw]">
             <HpBar label={t.cargo} value={g.cargo.hp / g.cargo.maxHp} />
             <HpBar label={t.frigate} value={g.player.hp / g.player.maxHp} />
@@ -379,8 +385,12 @@ export default function StraitGuardGame() {
       )}
 
       {screen === "play" && g && (
-        <div className="absolute bottom-4 z-20 pointer-events-none flex flex-col items-end gap-2"
-          style={{ [dir === "rtl" ? "left" : "right"]: "1rem" } as React.CSSProperties}>
+        <div className="absolute z-20 pointer-events-none flex flex-col items-end gap-2"
+          style={{
+            bottom: "calc(var(--sg-inset-bottom) + 1rem)",
+            [dir === "rtl" ? "left" : "right"]:
+              dir === "rtl" ? "calc(var(--sg-inset-left) + 1rem)" : "calc(var(--sg-inset-right) + 1rem)",
+          } as React.CSSProperties}>
           {g.player.tripleTimer > 0 && (
             <div className="sg-panel px-2 py-1 text-[10px] tracking-[0.2em] font-mono text-emerald-200">
               🔫 {t.tripleActive} · {g.player.tripleTimer.toFixed(1)}s
@@ -710,7 +720,7 @@ export default function StraitGuardGame() {
 function Overlay({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 p-6
+      className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 sg-safe-overlay
         bg-[radial-gradient(ellipse_at_center,rgba(8,20,32,.6),rgba(2,6,12,.92))] backdrop-blur-md"
       style={{
         position: "absolute",
@@ -724,7 +734,10 @@ function Overlay({ children }: { children: React.ReactNode }) {
         alignItems: "center",
         justifyContent: "center",
         gap: "1rem",
-        padding: "1.5rem",
+        paddingTop: "calc(var(--sg-inset-top) + 1.5rem)",
+        paddingRight: "calc(var(--sg-inset-right) + 1.5rem)",
+        paddingBottom: "calc(var(--sg-inset-bottom) + 1.5rem)",
+        paddingLeft: "calc(var(--sg-inset-left) + 1.5rem)",
         boxSizing: "border-box",
         overflowY: "auto",
         background: "radial-gradient(ellipse at center, rgba(8,20,32,.6), rgba(2,6,12,.92))",
