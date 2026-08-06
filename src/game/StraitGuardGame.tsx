@@ -18,7 +18,7 @@ type Lang = "en" | "ar";
 const VIBRATION_KEY = "sg_vibration_enabled";
 const NIGHT_KEY = "sg_night_mode";
 const APP_VERSION = "1.0.0";
-const SUPPORT_EMAIL = "budapest2015@gmail.com";
+const SUPPORT_EMAIL = "sidr4honey@gmail.com";
 const COPYRIGHT_YEAR = "2026";
 
 const I18N: Record<Lang, Record<string, string>> = {
