@@ -12,7 +12,7 @@ import { creditScore, loadUpgrades, nextCost, purchase, UPGRADES, UpgradeKey, Up
 
 
 
-type Screen = "menu" | "levels" | "play" | "pause" | "win" | "lose" | "privacy" | "contact" | "about" | "shop";
+type Screen = "menu" | "levels" | "play" | "pause" | "win" | "lose" | "privacy" | "contact" | "support" | "about" | "shop";
 type Lang = "en" | "ar";
 
 const VIBRATION_KEY = "sg_vibration_enabled";
@@ -43,7 +43,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     airstrikeProgress: "AIRSTRIKE {n}/{m}",
     congrats: "CONGRATULATIONS!", nextLevel: "▶ NEXT LEVEL",
     allCleared: "ALL LEVELS CLEARED · LEGENDARY COMMANDER",
-    privacy: "PRIVACY POLICY", contact: "CONTACT US", about: "ABOUT GAME",
+    privacy: "PRIVACY POLICY", contact: "CONTACT US", support: "SUPPORT", about: "ABOUT GAME",
     testAd: "TEST AD",
     shop: "UPGRADES", points: "POINTS", buy: "UPGRADE", maxed: "MAX", cost: "COST",
     tier: "TIER", earned: "+{n} POINTS EARNED",
@@ -57,6 +57,8 @@ const I18N: Record<Lang, Record<string, string>> = {
     ].join("\n\n"),
     contactBody: "For support, feedback, or bug reports, please reach out to us by email. We reply as soon as possible.",
     contactEmailLabel: "Support Email",
+    supportBody: "Need help with STRAIT-GUARD? Contact our support team by email and we'll get back to you as soon as possible.",
+    supportEmailLabel: "Support Email",
     aboutName: "Game Name",
     aboutVersion: "Version",
     aboutCopyright: "Copyright",
@@ -86,7 +88,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     airstrikeProgress: "الغارة {n}/{m}",
     congrats: "مبروك!", nextLevel: "▶ المستوى التالي",
     allCleared: "تم إنهاء جميع المستويات · قائد أسطوري",
-    privacy: "سياسة الخصوصية", contact: "اتصل بنا", about: "عن اللعبة",
+    privacy: "سياسة الخصوصية", contact: "اتصل بنا", support: "الدعم", about: "عن اللعبة",
     testAd: "اختبار الإعلان",
     shop: "الترقيات", points: "النقاط", buy: "ترقية", maxed: "أقصى", cost: "التكلفة",
     tier: "المستوى", earned: "+{n} نقطة مكتسبة",
@@ -100,6 +102,8 @@ const I18N: Record<Lang, Record<string, string>> = {
     ].join("\n\n"),
     contactBody: "للدعم أو الملاحظات أو الإبلاغ عن الأخطاء، يرجى مراسلتنا عبر البريد الإلكتروني وسنرد في أقرب وقت ممكن.",
     contactEmailLabel: "بريد الدعم",
+    supportBody: "هل تحتاج مساعدة في لعبة حارس المضيق؟ تواصل مع فريق الدعم عبر البريد الإلكتروني وسنرد عليك في أقرب وقت.",
+    supportEmailLabel: "بريد الدعم",
     aboutName: "اسم اللعبة",
     aboutVersion: "الإصدار",
     aboutCopyright: "حقوق النشر",
@@ -465,6 +469,7 @@ export default function StraitGuardGame() {
             <button onClick={click(() => setScreen("about"))} className="btn-ghost">{t.about}</button>
             <button onClick={click(() => setScreen("privacy"))} className="btn-ghost">{t.privacy}</button>
             <button onClick={click(() => setScreen("contact"))} className="btn-ghost">{t.contact}</button>
+            <button onClick={click(() => setScreen("support"))} className="btn-ghost">{t.support}</button>
           </div>
         </Overlay>
       )}
@@ -511,6 +516,20 @@ export default function StraitGuardGame() {
             <p className="mb-4 leading-relaxed">{t.contactBody}</p>
             <div className="flex flex-col gap-1" dir="ltr">
               <span className="text-[10px] tracking-[0.25em] text-cyan-200/70 font-bold uppercase">{t.contactEmailLabel}</span>
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="text-amber-200 font-mono text-base underline break-all">{SUPPORT_EMAIL}</a>
+            </div>
+          </InfoPanel>
+          <button onClick={click(toMenu)} className="btn-ghost">{t.back}</button>
+        </Overlay>
+      )}
+
+      {screen === "support" && (
+        <Overlay>
+          <SgTitle accent="cyan">{t.support}</SgTitle>
+          <InfoPanel lang={lang}>
+            <p className="mb-4 leading-relaxed">{t.supportBody}</p>
+            <div className="flex flex-col gap-1" dir="ltr">
+              <span className="text-[10px] tracking-[0.25em] text-cyan-200/70 font-bold uppercase">{t.supportEmailLabel}</span>
               <a href={`mailto:${SUPPORT_EMAIL}`} className="text-amber-200 font-mono text-base underline break-all">{SUPPORT_EMAIL}</a>
             </div>
           </InfoPanel>
