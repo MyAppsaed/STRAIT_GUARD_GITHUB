@@ -523,6 +523,20 @@ export default function StraitGuardGame() {
         </Overlay>
       )}
 
+      {screen === "support" && (
+        <Overlay>
+          <SgTitle accent="cyan">{t.support}</SgTitle>
+          <InfoPanel lang={lang}>
+            <p className="mb-4 leading-relaxed">{t.supportBody}</p>
+            <div className="flex flex-col gap-1" dir="ltr">
+              <span className="text-[10px] tracking-[0.25em] text-cyan-200/70 font-bold uppercase">{t.supportEmailLabel}</span>
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="text-amber-200 font-mono text-base underline break-all">{SUPPORT_EMAIL}</a>
+            </div>
+          </InfoPanel>
+          <button onClick={click(toMenu)} className="btn-ghost">{t.back}</button>
+        </Overlay>
+      )}
+
       {screen === "about" && (
         <Overlay>
           <SgTitle accent="cyan">{t.about}</SgTitle>
