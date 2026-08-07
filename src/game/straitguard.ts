@@ -156,6 +156,8 @@ export class EnemyController extends Ship {
   private driftDir: number;
   private stationGap: number;
   private anchorX: number;
+  private patrolMin: number;
+  private patrolMax: number;
   constructor(public kind: EnemyKind, pos: Vec2, public fromSide: "left" | "right", damageMul = 1, speedMul = 1) {
     let hp = 20, size = { x: 30, y: 30 }, fireRate = 1.6, speed = 60, dmg = 6, color = "#c44";
     if (kind === "fast") { hp = 14; size = { x: 26, y: 26 }; fireRate = 1.4; speed = 130; dmg = 5; color = "#e8a"; }
