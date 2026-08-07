@@ -243,9 +243,9 @@ export default function StraitGuardGame() {
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     };
     const releasePointer = (pointerId: number) => {
-      if (canvas.hasPointerCapture(pointerId)) {
-        canvas.releasePointerCapture(pointerId);
-      }
+      try {
+        if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
+      } catch { /* Pointer may already be released by the WebView. */ }
       activePointerId = null;
     };
     const onDown = (e: PointerEvent) => {
@@ -254,7 +254,7 @@ export default function StraitGuardGame() {
       if (activePointerId !== null && activePointerId !== e.pointerId) return;
       e.preventDefault();
       activePointerId = e.pointerId;
-      canvas.setPointerCapture(e.pointerId);
+      try { canvas.setPointerCapture(e.pointerId); } catch { /* capture is optional */ }
       g.player.setTarget(getPos(e));
     };
     const onMove = (e: PointerEvent) => {
@@ -289,14 +289,6 @@ export default function StraitGuardGame() {
     canvas.addEventListener("pointermove", onMove);
     canvas.addEventListener("pointerup", onUp);
     canvas.addEventListener("pointercancel", onCancel);
-    // Safety net: some iPad WebViews swallow pointerup on the element when the
-    // touch ends outside the capture area.
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onCancel);
-    // Block iOS double-tap zoom / rubber-band scroll over the play surface.
-    const blockTouch = (e: TouchEvent) => { if (gameRef.current?.status === "playing") e.preventDefault(); };
-    canvas.addEventListener("touchstart", blockTouch, { passive: false });
-    canvas.addEventListener("touchmove", blockTouch, { passive: false });
 
     return () => {
       window.removeEventListener("resize", resize);
@@ -308,10 +300,6 @@ export default function StraitGuardGame() {
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerup", onUp);
       canvas.removeEventListener("pointercancel", onCancel);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onCancel);
-      canvas.removeEventListener("touchstart", blockTouch);
-      canvas.removeEventListener("touchmove", blockTouch);
     };
   }, []);
 
@@ -325,7 +313,11 @@ export default function StraitGuardGame() {
     lastLevelRef.current = lvl;
     setEndResult(null);
     setScreen("play");
-    AdManager.showBanner();
+    // Do not open a native banner while the level screen is handling the tap.
+    // Some Android WebViews/OEM builds can tear down or cover the game surface
+    // when the AdMob banner view is attached during the same input dispatch.
+    // Interstitials remain available at the natural win/lose break.
+    void AdManager.hideBanner();
   };
   const pause = () => { gameRef.current?.pause(); setScreen("pause"); };
   const resume = () => { gameRef.current?.resume(); setScreen("play"); };
