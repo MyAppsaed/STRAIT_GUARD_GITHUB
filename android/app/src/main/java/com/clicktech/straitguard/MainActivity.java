@@ -24,9 +24,15 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // NOTE: do NOT call requestWindowFeature(Window.FEATURE_NO_TITLE) here.
-        // On an AppCompat-based activity that throws AndroidRuntimeException and
-        // crashes the app at launch. The NoActionBar theme already removes the bar.
+        // NOTE: never call requestWindowFeature(...) on an AppCompat activity — it throws
+        // AndroidRuntimeException and crashes at launch. The AppCompat-safe equivalent is
+        // supportRequestWindowFeature(), which must run before super.onCreate() inflates
+        // the content view. Guarded so a failure can never crash the app.
+        try {
+            supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
+        } catch (Throwable ignored) {
+            // Theme already handles it.
+        }
 
         // Must run before super.onCreate() so the window is configured before the view inflates.
         EdgeToEdge.enable(
