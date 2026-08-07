@@ -190,13 +190,21 @@ export default function StraitGuardGame() {
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const rect = canvas.getBoundingClientRect();
-      canvas.width = Math.floor(rect.width * dpr);
-      canvas.height = Math.floor(rect.height * dpr);
+      const w = Math.max(1, Math.round(rect.width));
+      const h = Math.max(1, Math.round(rect.height));
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      if (gameRef.current) gameRef.current.resize(rect.width, rect.height);
+      if (gameRef.current) gameRef.current.resize(w, h);
     };
     resize();
     window.addEventListener("resize", resize);
+    window.addEventListener("orientationchange", resize);
+    window.visualViewport?.addEventListener("resize", resize);
+    // Tablets/iPad WebViews often resize the element without firing window
+    // resize (split view, keyboard, safe-area changes) — observe the node too.
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => resize()) : null;
+    ro?.observe(canvas);
 
     const loop = (ts: number) => {
       const dt = Math.min(0.05, (ts - lastRef.current) / 1000 || 0);
