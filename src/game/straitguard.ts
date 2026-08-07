@@ -176,6 +176,9 @@ export class EnemyController extends Ship {
     // home in on the frigate, so moving the frigate cannot drag them along.
     this.wobblePhase += this.wobbleSpeed * dt;
     this.anchorX += this.driftDir * this.speed * 0.18 * dt;
+    // Bounce inside the enemy's own patrol band so it never drifts off-lane.
+    if (this.anchorX < this.patrolMin) { this.anchorX = this.patrolMin; this.driftDir = 1; }
+    if (this.anchorX > this.patrolMax) { this.anchorX = this.patrolMax; this.driftDir = -1; }
     this.pos.x = this.anchorX + Math.sin(this.wobblePhase) * this.wobbleAmp;
 
     const stationY = maxY - this.stationGap;
