@@ -149,6 +149,13 @@ export class EnemyController extends Ship {
   speed: number;
   bulletDamage: number;
   color: string;
+  // Independent patrol state — enemies never inherit the frigate's motion.
+  private wobblePhase = Math.random() * Math.PI * 2;
+  private wobbleSpeed = 0.5 + Math.random() * 0.6;
+  private wobbleAmp = 18 + Math.random() * 26;
+  private driftDir: number;
+  private stationGap: number;
+  private anchorX: number;
   constructor(public kind: EnemyKind, pos: Vec2, public fromSide: "left" | "right", damageMul = 1, speedMul = 1) {
     let hp = 20, size = { x: 30, y: 30 }, fireRate = 1.6, speed = 60, dmg = 6, color = "#c44";
     if (kind === "fast") { hp = 14; size = { x: 26, y: 26 }; fireRate = 1.4; speed = 130; dmg = 5; color = "#e8a"; }
@@ -159,20 +166,33 @@ export class EnemyController extends Ship {
     this.speed = speed * speedMul;
     this.bulletDamage = dmg * damageMul;
     this.color = color;
+    this.driftDir = fromSide === "left" ? 1 : -1;
+    this.stationGap = 130 + Math.random() * 170;
+    this.anchorX = pos.x;
   }
   update(dt: number, target: Vec2, maxY: number): Bullet | null {
+    // --- Movement: fully independent of the player's position/velocity ---
+    // Enemies hold their own station line and patrol horizontally; they never
+    // home in on the frigate, so moving the frigate cannot drag them along.
+    this.wobblePhase += this.wobbleSpeed * dt;
+    this.anchorX += this.driftDir * this.speed * 0.18 * dt;
+    this.pos.x = this.anchorX + Math.sin(this.wobblePhase) * this.wobbleAmp;
+
+    const stationY = maxY - this.stationGap;
+    const dyStation = stationY - this.pos.y;
+    if (Math.abs(dyStation) > 4) {
+      const step = Math.sign(dyStation) * this.speed * 0.45 * dt;
+      this.pos.y += Math.abs(step) > Math.abs(dyStation) ? dyStation : step;
+    }
+    // Hard safety clamp: never cross below the player's firing line.
+    if (this.pos.y > maxY) this.pos.y = maxY;
+
+    // --- Aiming (targeting is allowed; movement is not) ---
     const dx = target.x - this.pos.x;
     const dy = target.y - this.pos.y;
     const d = Math.hypot(dx, dy) || 1;
-    if (d > 160) {
-      this.pos.x += (dx / d) * this.speed * dt;
-      this.pos.y += (dy / d) * this.speed * dt;
-    } else {
-      this.pos.y += (dy / d) * this.speed * 0.4 * dt;
-    }
-    // Clamp: enemies must stay in front of (above) the player's firing line.
-    if (this.pos.y > maxY) this.pos.y = maxY;
     this.fireCooldown -= dt;
+
     if (this.fireCooldown <= 0) {
       this.fireCooldown = this.fireRate;
       const sp = this.kind === "fast" ? 320 : this.kind === "heavy" ? 200 : 240;
