@@ -190,21 +190,13 @@ export default function StraitGuardGame() {
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const rect = canvas.getBoundingClientRect();
-      const w = Math.max(1, Math.round(rect.width));
-      const h = Math.max(1, Math.round(rect.height));
-      canvas.width = Math.floor(w * dpr);
-      canvas.height = Math.floor(h * dpr);
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      if (gameRef.current) gameRef.current.resize(w, h);
+      if (gameRef.current) gameRef.current.resize(rect.width, rect.height);
     };
     resize();
     window.addEventListener("resize", resize);
-    window.addEventListener("orientationchange", resize);
-    window.visualViewport?.addEventListener("resize", resize);
-    // Tablets/iPad WebViews often resize the element without firing window
-    // resize (split view, keyboard, safe-area changes) — observe the node too.
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => resize()) : null;
-    ro?.observe(canvas);
 
     const loop = (ts: number) => {
       const dt = Math.min(0.05, (ts - lastRef.current) / 1000 || 0);
@@ -243,9 +235,9 @@ export default function StraitGuardGame() {
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     };
     const releasePointer = (pointerId: number) => {
-      try {
-        if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
-      } catch { /* Pointer may already be released by the WebView. */ }
+      if (canvas.hasPointerCapture(pointerId)) {
+        canvas.releasePointerCapture(pointerId);
+      }
       activePointerId = null;
     };
     const onDown = (e: PointerEvent) => {
@@ -254,7 +246,7 @@ export default function StraitGuardGame() {
       if (activePointerId !== null && activePointerId !== e.pointerId) return;
       e.preventDefault();
       activePointerId = e.pointerId;
-      try { canvas.setPointerCapture(e.pointerId); } catch { /* capture is optional */ }
+      canvas.setPointerCapture(e.pointerId);
       g.player.setTarget(getPos(e));
     };
     const onMove = (e: PointerEvent) => {
@@ -292,9 +284,6 @@ export default function StraitGuardGame() {
 
     return () => {
       window.removeEventListener("resize", resize);
-      window.removeEventListener("orientationchange", resize);
-      window.visualViewport?.removeEventListener("resize", resize);
-      ro?.disconnect();
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointermove", onMove);
@@ -313,11 +302,7 @@ export default function StraitGuardGame() {
     lastLevelRef.current = lvl;
     setEndResult(null);
     setScreen("play");
-    // Do not open a native banner while the level screen is handling the tap.
-    // Some Android WebViews/OEM builds can tear down or cover the game surface
-    // when the AdMob banner view is attached during the same input dispatch.
-    // Interstitials remain available at the natural win/lose break.
-    void AdManager.hideBanner();
+    AdManager.showBanner();
   };
   const pause = () => { gameRef.current?.pause(); setScreen("pause"); };
   const resume = () => { gameRef.current?.resume(); setScreen("play"); };
