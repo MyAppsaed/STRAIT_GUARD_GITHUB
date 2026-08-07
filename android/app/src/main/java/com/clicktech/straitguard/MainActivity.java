@@ -24,9 +24,9 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // Native fail-safe: never allow an Android title bar above the game,
-        // even if a device restores an older theme during activity recreation.
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        // NOTE: do NOT call requestWindowFeature(Window.FEATURE_NO_TITLE) here.
+        // On an AppCompat-based activity that throws AndroidRuntimeException and
+        // crashes the app at launch. The NoActionBar theme already removes the bar.
 
         // Must run before super.onCreate() so the window is configured before the view inflates.
         EdgeToEdge.enable(
