@@ -169,6 +169,8 @@ export class EnemyController extends Ship {
     this.driftDir = fromSide === "left" ? 1 : -1;
     this.stationGap = 130 + Math.random() * 170;
     this.anchorX = pos.x;
+    this.patrolMin = Math.max(60, pos.x - (120 + Math.random() * 160));
+    this.patrolMax = pos.x + (120 + Math.random() * 160);
   }
   update(dt: number, target: Vec2, maxY: number): Bullet | null {
     // --- Movement: fully independent of the player's position/velocity ---
