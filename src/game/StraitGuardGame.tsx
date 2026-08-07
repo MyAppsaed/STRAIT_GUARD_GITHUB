@@ -325,7 +325,11 @@ export default function StraitGuardGame() {
     lastLevelRef.current = lvl;
     setEndResult(null);
     setScreen("play");
-    AdManager.showBanner();
+    // Do not open a native banner while the level screen is handling the tap.
+    // Some Android WebViews/OEM builds can tear down or cover the game surface
+    // when the AdMob banner view is attached during the same input dispatch.
+    // Interstitials remain available at the natural win/lose break.
+    void AdManager.hideBanner();
   };
   const pause = () => { gameRef.current?.pause(); setScreen("pause"); };
   const resume = () => { gameRef.current?.resume(); setScreen("play"); };
