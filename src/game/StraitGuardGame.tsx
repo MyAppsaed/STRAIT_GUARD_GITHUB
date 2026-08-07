@@ -289,14 +289,29 @@ export default function StraitGuardGame() {
     canvas.addEventListener("pointermove", onMove);
     canvas.addEventListener("pointerup", onUp);
     canvas.addEventListener("pointercancel", onCancel);
+    // Safety net: some iPad WebViews swallow pointerup on the element when the
+    // touch ends outside the capture area.
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
+    // Block iOS double-tap zoom / rubber-band scroll over the play surface.
+    const blockTouch = (e: TouchEvent) => { if (gameRef.current?.status === "playing") e.preventDefault(); };
+    canvas.addEventListener("touchstart", blockTouch, { passive: false });
+    canvas.addEventListener("touchmove", blockTouch, { passive: false });
 
     return () => {
       window.removeEventListener("resize", resize);
+      window.removeEventListener("orientationchange", resize);
+      window.visualViewport?.removeEventListener("resize", resize);
+      ro?.disconnect();
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerup", onUp);
       canvas.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      canvas.removeEventListener("touchstart", blockTouch);
+      canvas.removeEventListener("touchmove", blockTouch);
     };
   }, []);
 
