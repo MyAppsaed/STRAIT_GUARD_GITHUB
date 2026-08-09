@@ -3,7 +3,6 @@ package com.clicktech.straitguard;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
-import android.view.Window;
 import android.view.WindowManager;
 
 import androidx.activity.EdgeToEdge;
@@ -24,10 +23,6 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // Native fail-safe: never allow an Android title bar above the game,
-        // even if a device restores an older theme during activity recreation.
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
-
         // Must run before super.onCreate() so the window is configured before the view inflates.
         EdgeToEdge.enable(
             this,
@@ -36,10 +31,6 @@ public class MainActivity extends BridgeActivity {
         );
 
         super.onCreate(savedInstanceState);
-
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().hide();
-        }
 
         // Draw into the display cutout / notch area on all orientations (incl. landscape).
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
