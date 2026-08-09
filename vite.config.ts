@@ -5,6 +5,7 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import path from "node:path";
 
 export default defineConfig({
+  // Keep relative asset paths compatible with Android WebView and static hosting.
   base: "./",
   plugins: [react(), tailwindcss(), tsconfigPaths()],
   resolve: {
